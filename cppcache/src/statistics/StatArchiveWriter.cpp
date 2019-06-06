@@ -21,7 +21,7 @@
 #include <ctime>
 #include <sstream>
 
-#include <ace/OS_NS_sys_utsname.h>
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/date_time.hpp>
 #include <boost/date_time/c_local_time_adjustor.hpp>
 
@@ -31,6 +31,7 @@
 #include "../util/chrono/time_point.hpp"
 #include "GeodeStatisticsFactory.hpp"
 #include "HostStatSampler.hpp"
+#include "config.h"
 
 namespace apache {
 namespace geode {
@@ -331,6 +332,8 @@ std::string getTimeZoneName() {
   return buf.str();
 }
 
+std::string getHostName() { return boost::asio::ip::host_name(); }
+
 // Constructor and Member functions of StatArchiveWriter class
 StatArchiveWriter::StatArchiveWriter(std::string outfile,
                                      HostStatSampler *samplerArg,
@@ -354,8 +357,7 @@ StatArchiveWriter::StatArchiveWriter(std::string outfile,
   this->dataBuffer->writeLong(
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())
           .count());
-  int64_t sysId = sampler->getSystemId();
-  this->dataBuffer->writeLong(sysId);
+  this->dataBuffer->writeLong(sampler->getSystemId());
   this->dataBuffer->writeLong(
       duration_cast<milliseconds>(
           sampler->getSystemStartTime().time_since_epoch())
@@ -365,26 +367,12 @@ StatArchiveWriter::StatArchiveWriter(std::string outfile,
       duration_cast<milliseconds>(getTimeZoneOffset()).count());
   this->dataBuffer->writeUTF(getTimeZoneName());
 
-  std::string sysDirPath = sampler->getSystemDirectoryPath();
-  this->dataBuffer->writeUTF(sysDirPath);
-  std::string prodDesc = sampler->getProductDescription();
-
-  this->dataBuffer->writeUTF(prodDesc);
-  ACE_utsname u;
-  ACE_OS::uname(&u);
-  std::string os(u.sysname);
-  os += " ";
-  /* This version name returns date of release of the version which
-   creates confusion about the creation time of the vsd file. Hence
-   removing it now. Later I'll change it to just show version without
-   date. For now only name of the OS will be displayed.
-   */
-  // os += u.version;
-
-  this->dataBuffer->writeUTF(os);
-  std::string machineInfo(u.machine);
+  this->dataBuffer->writeUTF(sampler->getSystemDirectoryPath());
+  this->dataBuffer->writeUTF(sampler->getProductDescription());
+  this->dataBuffer->writeUTF(GEODE_SYSTEM_NAME);
+  std::string machineInfo(GEODE_SYSTEM_PROCESSOR);
   machineInfo += " ";
-  machineInfo += u.nodename;
+  machineInfo += getHostName();
   this->dataBuffer->writeUTF(machineInfo);
 
   resampleResources();
