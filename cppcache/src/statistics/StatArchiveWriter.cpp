@@ -19,13 +19,11 @@
 
 #include <chrono>
 #include <ctime>
+#include <sstream>
 
-#include <ace/ACE.h>
-#include <ace/OS_NS_sys_time.h>
 #include <ace/OS_NS_sys_utsname.h>
-#include <ace/OS_NS_time.h>
-#include <ace/Task.h>
-#include <ace/Thread_Mutex.h>
+#include <boost/date_time.hpp>
+#include <boost/date_time/c_local_time_adjustor.hpp>
 
 #include <geode/internal/geode_globals.hpp>
 
@@ -312,6 +310,27 @@ void ResourceInst::writeResourceInst(StatDataOutput *dataOutArg,
   }
 }
 
+std::chrono::milliseconds getTimeZoneOffset() {
+  using boost::date_time::c_local_adjustor;
+  using boost::posix_time::ptime;
+  using boost::posix_time::second_clock;
+  using std::chrono::milliseconds;
+
+  const auto utc = second_clock::universal_time();
+  const auto local = c_local_adjustor<decltype(utc)>::utc_to_local(utc);
+
+  return milliseconds((local - utc).total_milliseconds());
+}
+
+std::string getTimeZoneName() {
+  const auto now = std::chrono::system_clock::now();
+  const auto tm_val = apache::geode::util::chrono::localtime(now);
+
+  std::stringstream buf;
+  buf << std::put_time(&tm_val, "%Z");
+  return buf.str();
+}
+
 // Constructor and Member functions of StatArchiveWriter class
 StatArchiveWriter::StatArchiveWriter(std::string outfile,
                                      HostStatSampler *samplerArg,
@@ -319,13 +338,9 @@ StatArchiveWriter::StatArchiveWriter(std::string outfile,
     : cache(cache) {
   resourceTypeId = 0;
   resourceInstId = 0;
-  statResourcesModCount = 0;
   archiveFile = outfile;
   bytesWrittenToFile = 0;
 
-  /* adongre
-   * CID 28982: Uninitialized scalar field (UNINIT_CTOR)
-   */
   m_samplesize = 0;
 
   dataBuffer = new StatDataOutput(archiveFile, cache);
@@ -345,17 +360,10 @@ StatArchiveWriter::StatArchiveWriter(std::string outfile,
       duration_cast<milliseconds>(
           sampler->getSystemStartTime().time_since_epoch())
           .count());
-  int32_t tzOffset = ACE_OS::timezone();
-  // offset in milli seconds
-  tzOffset = tzOffset * -1 * 1000;
-  this->dataBuffer->writeInt(tzOffset);
 
-  auto now = std::chrono::system_clock::now();
-  auto tm_val = apache::geode::util::chrono::localtime(now);
-  char buf[512] = {0};
-  std::strftime(buf, sizeof(buf), "%Z", &tm_val);
-  std::string tzId(buf);
-  this->dataBuffer->writeUTF(tzId);
+  this->dataBuffer->writeInt(
+      duration_cast<milliseconds>(getTimeZoneOffset()).count());
+  this->dataBuffer->writeUTF(getTimeZoneName());
 
   std::string sysDirPath = sampler->getSystemDirectoryPath();
   this->dataBuffer->writeUTF(sysDirPath);
