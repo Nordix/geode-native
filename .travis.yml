@@ -41,7 +41,7 @@ script:
 notifications:
   email:
     recipients:
-      - dev@geode.apache.org
+      - alberto.bustamante.reyes@est.tech
     on_success: change
     on_failure: change
 
