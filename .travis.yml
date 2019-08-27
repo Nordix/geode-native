@@ -25,7 +25,8 @@ services:
 env:
   global:
     - DOCKER_ARGS="--rm --volume=${TRAVIS_BUILD_DIR}:/geode-native"
-    - DOCKER_IMAGE="apachegeode/geode-native-build:clang"
+      #    - DOCKER_IMAGE="apachegeode/geode-native-build:clang"
+    - DOCKER_IMAGE="alb3rtobr/geode-native-build:1.9"
     - SOURCE_DIR="/geode-native"
 
   matrix:
