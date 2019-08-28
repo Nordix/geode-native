@@ -30,6 +30,9 @@ function(add_example)
     @ONLY)
 endfunction()
 
+add_example(NAME alb3rtobr-client
+    SOURCE main.cpp)
+
 add_example(NAME authinitialize
 	SOURCE main.cpp exampleAuthInitialize.hpp exampleAuthInitialize.cpp)
 
