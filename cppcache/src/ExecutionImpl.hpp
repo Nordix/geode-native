@@ -26,6 +26,7 @@
 #include <geode/AuthenticatedView.hpp>
 #include <geode/CacheableBuiltins.hpp>
 #include <geode/Execution.hpp>
+#include <geode/ProxyResultCollector.hpp>
 #include <geode/Region.hpp>
 #include <geode/ResultCollector.hpp>
 
@@ -59,7 +60,7 @@ class ExecutionImpl {
         m_allServer(allServer),
         m_pool(pool),
         m_authenticatedView(authenticatedView) {}
-  virtual ~ExecutionImpl() noexcept = default;
+  virtual ~ExecutionImpl() noexcept;
   virtual Execution withFilter(std::shared_ptr<CacheableVector> routingObj);
   virtual Execution withArgs(std::shared_ptr<Cacheable> args);
   virtual Execution withCollector(std::shared_ptr<ResultCollector> rs);
@@ -78,6 +79,11 @@ class ExecutionImpl {
   static void addResults(std::shared_ptr<ResultCollector>& collector,
                          const std::shared_ptr<CacheableVector>& results);
 
+  /**
+   * Cancels an ongoing execution. Useful when execute is invoked asynchronously
+   */
+  void cancelExecution();
+
  private:
   ExecutionImpl(const ExecutionImpl& rhs)
       : m_routingObj(rhs.m_routingObj),
@@ -86,7 +92,9 @@ class ExecutionImpl {
         m_region(rhs.m_region),
         m_allServer(rhs.m_allServer),
         m_pool(rhs.m_pool),
-        m_authenticatedView(rhs.m_authenticatedView) {}
+        m_authenticatedView(rhs.m_authenticatedView),
+        m_prc(nullptr) {}
+
   ExecutionImpl(const std::shared_ptr<CacheableVector>& routingObj,
                 const std::shared_ptr<Cacheable>& args,
                 const std::shared_ptr<ResultCollector>& rc,
@@ -99,7 +107,13 @@ class ExecutionImpl {
         m_region(region),
         m_allServer(allServer),
         m_pool(pool),
-        m_authenticatedView(authenticatedView) {}
+        m_authenticatedView(authenticatedView),
+        m_prc() {}
+
+  std::shared_ptr<ResultCollector> execute_aux(
+      const std::string& func, std::chrono::milliseconds timeout,
+      bool serverHasResult, bool serverIsHA, bool serverOptimizeForWrite);
+
   std::shared_ptr<CacheableVector> m_routingObj;
   std::shared_ptr<Cacheable> m_args;
   std::shared_ptr<ResultCollector> m_rc;
@@ -107,6 +121,7 @@ class ExecutionImpl {
   bool m_allServer;
   std::shared_ptr<Pool> m_pool;
   AuthenticatedView* m_authenticatedView;
+  std::shared_ptr<ProxyResultCollector> m_prc;
   static std::recursive_mutex m_func_attrs_lock;
   static FunctionToFunctionAttributes m_func_attrs;
   //  std::vector<int8_t> m_attributes;

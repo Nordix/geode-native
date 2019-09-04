@@ -17,10 +17,12 @@
 
 #include "ExecutionImpl.hpp"
 
+#include <future>
 #include <sstream>
 
 #include <geode/DefaultResultCollector.hpp>
 #include <geode/ExceptionTypes.hpp>
+#include <geode/ProxyResultCollector.hpp>
 #include <geode/internal/geode_globals.hpp>
 
 #include "NoResult.hpp"
@@ -101,10 +103,6 @@ std::shared_ptr<ResultCollector> ExecutionImpl::execute(
     LOGDEBUG("ExecutionImpl::execute function on authenticated cache");
     gua.setAuthenticatedView(m_authenticatedView);
   }
-  bool serverHasResult = false;
-  bool serverIsHA = false;
-  bool serverOptimizeForWrite = false;
-
   auto&& attr = getFunctionAttributes(func);
   {
     if (attr == nullptr) {
@@ -127,20 +125,46 @@ std::shared_ptr<ResultCollector> ExecutionImpl::execute(
       }
     }
   }
-  serverHasResult = ((attr->at(0) == 1) ? true : false);
-  serverIsHA = ((attr->at(1) == 1) ? true : false);
-  serverOptimizeForWrite = ((attr->at(2) == 1) ? true : false);
 
+  bool serverHasResult = ((attr->at(0) == 1) ? true : false);
+  bool serverIsHA = ((attr->at(1) == 1) ? true : false);
+  bool serverOptimizeForWrite = ((attr->at(2) == 1) ? true : false);
+
+  if (serverHasResult == false) {
+    m_rc = std::make_shared<NoResult>();
+    return (execute_aux(func, timeout, serverHasResult, serverIsHA,
+                        serverOptimizeForWrite));
+  }
+
+  if (m_rc == nullptr) {
+    m_rc = std::make_shared<DefaultResultCollector>();
+  }
+
+  if (timeout > std::chrono::milliseconds(0)) {
+    return execute_aux(func, timeout, serverHasResult, serverIsHA,
+                       serverOptimizeForWrite);
+  }
+
+  timeout = DEFAULT_QUERY_RESPONSE_TIMEOUT;
+  std::future<std::shared_ptr<ResultCollector>> result =
+      std::async(std::launch::async, &ExecutionImpl::execute_aux, this, func,
+                 timeout, serverHasResult, serverIsHA, serverOptimizeForWrite);
+
+  std::shared_ptr<ProxyResultCollector> prc =
+      std::make_shared<ProxyResultCollector>(std::move(result));
+
+  m_prc = prc;
+
+  return prc;
+}
+
+std::shared_ptr<ResultCollector> ExecutionImpl::execute_aux(
+    const std::string& func, std::chrono::milliseconds timeout,
+    bool serverHasResult, bool serverIsHA, bool serverOptimizeForWrite) {
   LOGDEBUG(
       "ExecutionImpl::execute got functionAttributes from server for function "
       "= %s serverHasResult = %d serverIsHA = %d serverOptimizeForWrite = %d ",
       func.c_str(), serverHasResult, serverIsHA, serverOptimizeForWrite);
-
-  if (serverHasResult == false) {
-    m_rc = std::make_shared<NoResult>();
-  } else if (m_rc == nullptr) {
-    m_rc = std::make_shared<DefaultResultCollector>();
-  }
 
   uint8_t isHAHasResultOptimizeForWrite = 0;
   if (serverIsHA) {
@@ -562,6 +586,24 @@ std::shared_ptr<CacheableVector> ExecutionImpl::executeOnPool(
     return nullptr;
   }
   return nullptr;
+}
+
+void ExecutionImpl::cancelExecution() {
+  // TODO: This should try to cancel an ongoing asynchronous execution in order to
+  // free up resources if the execution timed out.
+  // The following implementation is not good because it makes the thread that
+  // launched the execution to block until the execution thread finishes but at least
+  // it prevents timed out executions not to provoke a seg fault when the
+  // Execution object goes out of scope with an execution not yet finished.
+  if (m_prc != nullptr) {
+    m_prc->getResult();
+  }
+}
+
+ExecutionImpl::~ExecutionImpl() {
+  if (m_prc != nullptr) {
+    cancelExecution();
+  }
 }
 
 }  // namespace client

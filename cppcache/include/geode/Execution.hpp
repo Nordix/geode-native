@@ -87,6 +87,10 @@ class APACHE_GEODE_EXPORT Execution {
    * <p>
    * @param func the name of the function to be executed
    * @param timeout value to wait for the operation to finish before timing out.
+   * If the timeout passed is zero, the function executes in a non-blocking way.
+   * This requires that the Execution object to be used is not an anonymous
+   * variable: Execution execution = functionService.<with...> rc =
+   * execution.execute(); instead of: rc = functionService.<with...>.execute()
    * @throws Exception if there is an error during function execution
    * @return either a default result collector or one specified by {@link
    * #withCollector(ResultCollector)}
@@ -106,6 +110,10 @@ class APACHE_GEODE_EXPORT Execution {
    * the function has been executed.
    * @param func the name of the function to be executed
    * @param timeout value to wait for the operation to finish before timing out.
+   * If the timeout passed is 0, the function executes in a non-blocking way.
+   * This requires that the Execution object to be used is not an anonymous
+   * variable: Execution execution = functionService.<with...> rc =
+   * execution.execute(); instead of: rc = functionService.<with...>.execute()
    * @throws Exception if there is an error during function execution
    * @return either a default result collector or one specified by {@link
    * #withCollector(ResultCollector)}
