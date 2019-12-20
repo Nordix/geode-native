@@ -1924,7 +1924,8 @@ void PdxInstanceImpl::setField(const std::string& fieldName, std::string* value,
     for (int32_t i = 0; i < length; ++i) {
       tmpValues.emplace_back(CacheableString::create(value[i]));
     }
-    m_updatedFields[fieldName] = CacheableStringArray::create(tmpValues);
+    m_updatedFields[fieldName] =
+        CacheableStringArray::create(std::move(tmpValues));
   }
 }
 
