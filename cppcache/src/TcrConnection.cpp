@@ -1355,8 +1355,12 @@ bool TcrConnection::hasExpired(const std::chrono::milliseconds& expiryTime) {
   if (expiryTime <= std::chrono::milliseconds::zero()) {
     return false;
   }
+  auto newExpiryTime =
+      expiryTime + (expiryTime * m_expiryTimeVariancePercentage) / 100;
+  LOGDEBUG("toberal hasExpired. expiryTime: %d, newExpiryTime: %d", expiryTime,
+           newExpiryTime);
 
-  return (clock::now() - m_creationTime) > expiryTime;
+  return (clock::now() - m_creationTime) > newExpiryTime;
 }
 
 bool TcrConnection::isIdle(const std::chrono::milliseconds& idleTime) {
