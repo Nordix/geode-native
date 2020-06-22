@@ -136,13 +136,6 @@ class ClientMetadataService : private NonCopyable, private NonAssignable {
       const std::vector<std::shared_ptr<CacheableKey>>& keys,
       const std::shared_ptr<Region>& region, bool isPrimary);
 
-  void markPrimaryBucketForTimeout(
-      const std::shared_ptr<Region>& region,
-      const std::shared_ptr<CacheableKey>& key,
-      const std::shared_ptr<Cacheable>& value,
-      const std::shared_ptr<Serializable>& aCallbackArgument, bool isPrimary,
-      std::shared_ptr<BucketServerLocation>& serverLocation, int8_t& version);
-
   void markPrimaryBucketForTimeoutButLookSecondaryBucket(
       const std::shared_ptr<Region>& region,
       const std::shared_ptr<CacheableKey>& key,
@@ -190,6 +183,9 @@ class ClientMetadataService : private NonCopyable, private NonAssignable {
   std::shared_ptr<ClientMetadataService::ServerToBucketsMap> pruneNodes(
       const std::shared_ptr<ClientMetadata>& metadata,
       const BucketSet& buckets);
+
+  void removeBucketServerLocation(
+      const std::shared_ptr<BucketServerLocation>& serverLocation);
 
  private:
   std::shared_ptr<ClientMetadata> SendClientPRMetadata(
