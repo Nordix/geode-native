@@ -28,7 +28,7 @@ namespace client {
 using internal::DSFid;
 
 void GatewaySenderEventCallbackArgument::fromData(DataInput &input) {
-  originatingDSId = input.readInt32();
+  originatingDSId = input.readNativeInt32();
   // Trying to get the recipientDSIds in these ways:
   //
   // int numElements = input.readArrayLength();
@@ -37,7 +37,7 @@ void GatewaySenderEventCallbackArgument::fromData(DataInput &input) {
   //   caused the same exception
   //   apache::geode::client::Exception: int length should have been 4
   //
-  int numElements = input.readNativeInt32();
+  int numElements = input.readInt32();
   for (int i = 0; i < numElements; i++) {
     recipientDSIds.push_back(input.readInt32());
   }
