@@ -28,6 +28,8 @@ add_executable(cpp-integration-test
   PdxInstanceTest.cpp
   PdxJsonTypeTest.cpp
   PdxSerializerTest.cpp
+  Order.cpp
+  Order.hpp
   RegionGetAllTest.cpp
   RegionPutAllTest.cpp
   RegionPutGetAllTest.cpp
@@ -42,6 +44,7 @@ add_executable(cpp-integration-test
   TransactionCleaningTest.cpp
   CleanIdleConnections.cpp
   BasicIPv6Test.cpp
+  WanDeserializationTest.cpp
 )
 
 target_compile_definitions(cpp-integration-test
