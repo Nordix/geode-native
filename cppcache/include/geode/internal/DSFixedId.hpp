@@ -24,7 +24,6 @@ namespace client {
 namespace internal {
 
 enum class DSFid : int32_t {
-  GatewaySenderEventCallbackArgument = -135,
   ClientHealthStats = -126,
   VersionTag = -120,
   CollectionTypeImpl = -59,
