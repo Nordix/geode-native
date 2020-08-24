@@ -19,9 +19,6 @@
 #include <framework/Framework.h>
 #include <framework/Gfsh.h>
 
-#include <chrono>
-#include <thread>
-
 #include <geode/Cache.hpp>
 #include <geode/EntryEvent.hpp>
 #include <geode/PoolManager.hpp>
@@ -61,7 +58,6 @@ class GeodeCacheListener : public CacheListener {
 };  // class GeodeCacheListener
 
 const std::string regionName = "region";
-const std::chrono::seconds fiveSeconds(5);
 
 Cache createCache(std::string durableClientId) {
   using apache::geode::client::CacheFactory;
@@ -170,7 +166,7 @@ TEST(WanDeserializationTest, testEventsAreDeserializedCorrectly) {
   auto order = std::make_shared<Order>(2, "product y", 37);
   regionA->put("order", order);
 
-  std::this_thread::sleep_for(fiveSeconds);  // wait for the event to be sent
+  sleep(5);  // wait for the event to be sent
   ASSERT_EQ(cacheListenerA->getNumEvents(), 1);
   ASSERT_EQ(cacheListenerB->getNumEvents(), 1);
 
