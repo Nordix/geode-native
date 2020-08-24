@@ -53,8 +53,7 @@ add_executable(apache-geode_unittests
   util/synchronized_mapTest.cpp
   util/synchronized_setTest.cpp
   util/TestableRecursiveMutex.hpp
-  util/chrono/durationTest.cpp
-  GatewaySenderEventCallbackArgumentTest.cpp)
+  util/chrono/durationTest.cpp)
 
 target_compile_definitions(apache-geode_unittests
   PUBLIC

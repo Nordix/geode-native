@@ -43,10 +43,6 @@ class Locator {
   Locator(Cluster &cluster, std::vector<Locator> &locators, std::string name,
           uint16_t jmxManagerPort, bool useIPv6);
 
-  Locator(Cluster &cluster, std::vector<Locator> &locators, std::string name,
-          uint16_t jmxManagerPort, bool useIPv6, uint16_t port,
-          std::vector<uint16_t> &remotePorts, uint16_t distributedSystemId);
-
   ~Locator();
 
   Locator(const Locator &copy) = delete;
@@ -54,7 +50,6 @@ class Locator {
   Locator(Locator &&move);
 
   const LocatorAddress &getAddress() const;
-
   void start();
 
   void stop();
@@ -68,13 +63,9 @@ class Locator {
 
   LocatorAddress locatorAddress_;
 
-  std::vector<uint16_t> remoteLocatorsPorts_;
-
   uint16_t jmxManagerPort_;
 
   bool started_ = false;
-
-  uint16_t distributedSystemId_ = 0;
 };
 
 struct ServerAddress {
@@ -126,16 +117,6 @@ class Cluster {
  public:
   Cluster(LocatorCount initialLocators, ServerCount initialServers,
           UseIpv6 useIPv6);
-
-  Cluster(LocatorCount initialLocators, ServerCount initialServers,
-          std::vector<uint16_t> &locatorPorts, std::vector<uint16_t> &remoteLocatorPort,
-          uint16_t distributedSystemId);
-
-  Cluster(Name name, Classpath classpath, SecurityManager securityManager,
-          User user, Password password, LocatorCount initialLocators,
-          ServerCount initialServers, CacheXMLFiles cacheXMLFiles,
-          std::vector<uint16_t> &locatorPorts, std::vector<uint16_t> &remoteLocatorPort,
-          uint16_t distributedSystemId);
 
   Cluster(LocatorCount initialLocators, ServerCount initialServers);
 
@@ -215,7 +196,6 @@ class Cluster {
   bool getUseIPv6();
 
  private:
-
   std::string name_;
   std::string classpath_;
   std::string securityManager_;
@@ -225,8 +205,6 @@ class Cluster {
 
   size_t initialLocators_;
   std::vector<Locator> locators_;
-  std::vector<uint16_t> locatorsPorts_;
-  std::vector<uint16_t> remoteLocatorsPorts_;
 
   size_t initialServers_;
   std::vector<Server> servers_;
@@ -242,8 +220,6 @@ class Cluster {
   std::string truststorePassword_;
 
   bool useIPv6_ = false;
-
-  uint16_t distributedSystemId_ = 0;
 
   GfshExecute gfsh_;
 
