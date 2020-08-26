@@ -1437,10 +1437,12 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
           }
           excludeServers.insert(ServerLocation(ep->name()));
           if (error == GF_IOERR) {
-            auto sl = std::make_shared<BucketServerLocation>(ep->name());
-            LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                    sl->toString().c_str());
-            m_clientMetadataService->removeBucketServerLocation(sl);
+            if (m_clientMetadataService != nullptr) {
+              auto sl = std::make_shared<BucketServerLocation>(ep->name());
+              LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
+                      sl->toString().c_str());
+              m_clientMetadataService->removeBucketServerLocation(sl);
+            }
           }
         }
       } else {
@@ -2358,10 +2360,12 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
         }
         return nullptr;
       } else if (*error == GF_IOERR) {
-        auto sl = std::make_shared<BucketServerLocation>(theEP->name());
-        LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                sl->toString().c_str());
-        m_clientMetadataService->removeBucketServerLocation(sl);
+        if (m_clientMetadataService != nullptr) {
+          auto sl = std::make_shared<BucketServerLocation>(theEP->name());
+          LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
+                  sl->toString().c_str());
+          m_clientMetadataService->removeBucketServerLocation(sl);
+        }
       }
     }
   }
