@@ -377,7 +377,7 @@ void ThinClientPoolDM::startBackgroundThreads() {
   // starting chunk processing helper thread
   ThinClientBaseDM::init();
 
-  if (m_clientMetadataService != nullptr) {
+  if (m_clientMetadataService) {
     m_clientMetadataService->start();
   }
 }
@@ -1101,7 +1101,7 @@ TcrEndpoint* ThinClientPoolDM::getSingleHopServer(
     std::shared_ptr<BucketServerLocation>& serverlocation,
     std::set<ServerLocation>& excludeServers) {
   const std::shared_ptr<CacheableKey>& key = request.getKeyRef();
-  if (m_clientMetadataService == nullptr || key == nullptr) return nullptr;
+  if (!m_clientMetadataService || key == nullptr) return nullptr;
   auto r = request.getRegion();
   auto region = nullptr == r ? nullptr : r->shared_from_this();
   TcrEndpoint* ep = nullptr;
@@ -1197,7 +1197,7 @@ GfErrType ThinClientPoolDM::sendSyncRequest(TcrMessage& request,
   if (!request.forTransaction() && m_attrs->getPRSingleHopEnabled() &&
       (type == TcrMessage::GET_ALL_70 ||
        type == TcrMessage::GET_ALL_WITH_CALLBACK) &&
-      m_clientMetadataService != nullptr) {
+      m_clientMetadataService) {
     GfErrType error = GF_NOERR;
 
     auto region =
@@ -1437,10 +1437,12 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
           }
           excludeServers.insert(ServerLocation(ep->name()));
           if (error == GF_IOERR) {
-            auto sl = std::make_shared<BucketServerLocation>(ep->name());
-            LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                    sl->toString().c_str());
-            m_clientMetadataService->removeBucketServerLocation(sl);
+            if (m_clientMetadataService) {
+              auto sl = std::make_shared<BucketServerLocation>(ep->name());
+              LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
+                      sl->toString().c_str());
+              m_clientMetadataService->removeBucketServerLocation(sl);
+            }
           }
         }
       } else {
@@ -1474,7 +1476,7 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
           "reply Metadata version is %d & bsl version is %d "
           "reply.isFEAnotherHop()=%d",
           reply.getMetaDataVersion(), version, reply.isFEAnotherHop());
-      if (m_clientMetadataService != nullptr && request.forSingleHop() &&
+      if (m_clientMetadataService && request.forSingleHop() &&
           (reply.getMetaDataVersion() != 0 ||
            (request.getMessageType() == TcrMessage::EXECUTE_REGION_FUNCTION &&
             request.getKeyRef() != nullptr && reply.isFEAnotherHop()))) {
@@ -2325,7 +2327,7 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
       // if all buckets are not initialized
       //  match = true;
     }
-    if (slTmp != nullptr && m_clientMetadataService != nullptr) {
+    if (slTmp != nullptr && m_clientMetadataService) {
       if (m_clientMetadataService->isBucketMarkedForTimeout(
               request.getRegionName().c_str(), slTmp->getBucketId())) {
         *error = GF_CLIENT_WAIT_TIMEOUT;
@@ -2342,7 +2344,7 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
       *error = createPoolConnectionToAEndPoint(conn, theEP, maxConnLimit, true);
       if (*error == GF_CLIENT_WAIT_TIMEOUT ||
           *error == GF_CLIENT_WAIT_TIMEOUT_REFRESH_PRMETADATA) {
-        if (m_clientMetadataService == nullptr || request.getKey() == nullptr) {
+        if (!m_clientMetadataService || request.getKey() == nullptr) {
           return nullptr;
         }
 
@@ -2358,10 +2360,12 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
         }
         return nullptr;
       } else if (*error == GF_IOERR) {
-        auto sl = std::make_shared<BucketServerLocation>(theEP->name());
-        LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                sl->toString().c_str());
-        m_clientMetadataService->removeBucketServerLocation(sl);
+        if (m_clientMetadataService) {
+          auto sl = std::make_shared<BucketServerLocation>(theEP->name());
+          LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
+                  sl->toString().c_str());
+          m_clientMetadataService->removeBucketServerLocation(sl);
+        }
       }
     }
   }
