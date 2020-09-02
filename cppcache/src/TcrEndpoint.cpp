@@ -1156,7 +1156,7 @@ void TcrEndpoint::setConnectionStatus(bool status) {
       m_numberOfTimesFailed += 1;
       m_isAuthenticated = false;
       // disconnected
-      LOGFINE("Disconnecting from endpoint %s", m_name.c_str());
+      LOGINFO("Disconnecting from endpoint %s", m_name.c_str());
       closeConnections();
       m_isActiveEndpoint = false;
       LOGFINE("Disconnected from endpoint %s", m_name.c_str());

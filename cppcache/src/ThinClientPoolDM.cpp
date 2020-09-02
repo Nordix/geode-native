@@ -1052,6 +1052,7 @@ GfErrType ThinClientPoolDM::sendUserCredentials(
       conn->getEndpointObject()->sendRequestConnWithRetry(request, reply, conn);
 
   if (conn) {
+    LOGINFO("32445 - ThinClientPoolDM::sendUserCredentials");
     err = handleEPError(conn->getEndpointObject(), reply, err);
   }
 
@@ -1404,6 +1405,7 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
 
       if (userCredMsgErr == GF_NOERR) {
         error = ep->sendRequestConnWithRetry(request, reply, conn);
+        LOGINFO("32445 - ThinClientPoolDM::sendSyncRequest");
         error = handleEPError(ep, reply, error);
       } else {
         error = userCredMsgErr;
@@ -2340,7 +2342,7 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
   if (theEP != nullptr) {
     conn = getFromEP(theEP);
     if (!conn) {
-      LOGFINER("Creating connection to endpint as not found in pool ");
+      LOGFINER("Creating connection to endpoint as not found in pool ");
       *error = createPoolConnectionToAEndPoint(conn, theEP, maxConnLimit, true);
       if (*error == GF_CLIENT_WAIT_TIMEOUT ||
           *error == GF_CLIENT_WAIT_TIMEOUT_REFRESH_PRMETADATA) {
@@ -2428,6 +2430,7 @@ GfErrType FunctionExecution::execute() {
       m_ep->name().c_str());
 
   m_error = m_poolDM->sendRequestToEP(request, reply, m_ep);
+  LOGINFO("32445 - FunctionExecution::execute - %s", funcName.c_str());
   m_error = m_poolDM->handleEPError(m_ep, reply, m_error);
   if (m_error != GF_NOERR) {
     if (m_error == GF_NOTCON || m_error == GF_IOERR) {

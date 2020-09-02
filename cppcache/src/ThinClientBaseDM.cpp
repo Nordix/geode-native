@@ -158,6 +158,7 @@ GfErrType ThinClientBaseDM::sendRequestToEndPoint(const TcrMessage& request,
       "ThinClientBaseDM::sendRequestToEP: completed endpoint send for: %s "
       "[error:%d]",
       ep->name().c_str(), error);
+  LOGINFO("32445 - ThinClientBaseDM::sendRequestToEP");
   return handleEPError(ep, reply, error);
 }
 
@@ -169,6 +170,20 @@ GfErrType ThinClientBaseDM::sendRequestToEndPoint(const TcrMessage& request,
  * This method is for exceptions when server should be marked as dead.
  */
 bool ThinClientBaseDM::unrecoverableServerError(const char* exceptStr) {
+  if (strstr(exceptStr, "org.apache.geode.cache.CacheClosedException") !=
+      nullptr) {
+    LOGINFO("32445 - CacheClosedException found!");
+    LOGINFO("%s", exceptStr);
+    LOGINFO("32445 -----------------------------");
+  }
+  if (strstr(exceptStr, "PartitionResponse got remote CacheClosedException") !=
+      nullptr) {
+    LOGINFO(
+        "32445 - Found 'PartitionResponse got remote CacheClosedException', "
+        "connection will not be closed.");
+    return false;
+  }
+
   return (
       (strstr(exceptStr, "org.apache.geode.cache.CacheClosedException") !=
        nullptr) ||

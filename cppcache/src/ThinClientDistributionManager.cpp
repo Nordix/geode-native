@@ -342,7 +342,7 @@ GfErrType ThinClientDistributionManager::sendUserCredentials(
       "ThinClientDistributionManager::sendUserCredentials: completed endpoint "
       "send for: %s [error:%d]",
       ep->name().c_str(), err);
-
+  LOGINFO("32445 - ThinClientDistributionManager::sendUserCredentials");
   err = handleEPError(ep, reply, err);
   if (err == GF_IOERR) {
     err = GF_NOTCON;
@@ -410,6 +410,7 @@ GfErrType ThinClientDistributionManager::sendRequestToEP(
         "ThinClientDistributionManager::sendRequestToEP: completed endpoint "
         "send for: %s [error:%d]",
         ep->name().c_str(), error);
+    LOGINFO("32445 - ThinClientDistributionManager::sendRequestToEP");
     error = handleEPError(ep, reply, error);
     if (error == GF_IOERR) {
       error = GF_NOTCON;
