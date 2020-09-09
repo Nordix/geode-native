@@ -133,11 +133,16 @@ GfErrType ThinClientBaseDM::handleEPError(TcrEndpoint* ep,
         bool doFailover = (markServerDead || nonFatalServerError(exceptStr));
         if (doFailover) {
           LOGFINE(
-              "ThinClientDistributionManager::sendRequestToEP: retrying for "
+              "ThinClientBaseDM::handleEPError: retrying for "
               "server [%s] exception: %s",
               ep->name().c_str(), exceptStr);
           error = GF_NOTCON;
           if (markServerDead) {
+            LOGINFO(
+                "32445 - Changing connection status for ep. name=[%s] "
+                "dmId=[%s] uId=[%s]",
+                ep->name().c_str(), ep->getDistributedMemberID(),
+                ep->getUniqueId());
             ep->setConnectionStatus(false);
           }
         }
@@ -175,13 +180,6 @@ bool ThinClientBaseDM::unrecoverableServerError(const char* exceptStr) {
     LOGINFO("32445 - CacheClosedException found!");
     LOGINFO("%s", exceptStr);
     LOGINFO("32445 -----------------------------");
-  }
-  if (strstr(exceptStr, "PartitionResponse got remote CacheClosedException") !=
-      nullptr) {
-    LOGINFO(
-        "32445 - Found 'PartitionResponse got remote CacheClosedException', "
-        "connection will not be closed.");
-    return false;
   }
 
   return (
