@@ -138,11 +138,8 @@ GfErrType ThinClientBaseDM::handleEPError(TcrEndpoint* ep,
               ep->name().c_str(), exceptStr);
           error = GF_NOTCON;
           if (markServerDead) {
-            LOGINFO(
-                "32445 - Changing connection status for ep. name=[%s] "
-                "dmId=[%s] uId=[%s]",
-                ep->name().c_str(), ep->getDistributedMemberID(),
-                ep->getUniqueId());
+            LOGINFO("32445 - Changing connection status for ep. name=[%s] ",
+                    ep->name().c_str());
             ep->setConnectionStatus(false);
           }
         }
