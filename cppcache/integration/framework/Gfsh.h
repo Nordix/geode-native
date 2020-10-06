@@ -250,6 +250,8 @@ class Gfsh {
       Region &withBuckets(const std::string &totalNumBuckets);
 
       Region &withGatewaySenderId(const std::string &gatewaySenderId);
+
+      Region &withPartitionResolver(const std::string &partitionResolver);
     };
 
     class GatewaySender : public Command<void> {
@@ -264,6 +266,7 @@ class Gfsh {
     class GatewayReceiver : public Command<void> {
      public:
       explicit GatewayReceiver(Gfsh &gfsh);
+
     };
   };
 
