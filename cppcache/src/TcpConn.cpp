@@ -208,7 +208,7 @@ size_t TcpConn::receive_nothrowiftimeout(char *buff, const size_t len,
 size_t TcpConn::receive(char *buff, const size_t len,
                         std::chrono::milliseconds timeout,
                         bool throwTimeoutException) {
-  boost::optional<boost::system::error_code> timer_result, read_result;
+  boost::optional<boost::system::error_code> read_result;
   std::size_t bytes_read = 0;
 
   try {
@@ -217,7 +217,7 @@ size_t TcpConn::receive(char *buff, const size_t len,
     boost::asio::async_read(
         socket_, boost::asio::buffer(buff, len),
         [&read_result, &bytes_read, len, throwTimeoutException](
-            const boost::system::error_code &ec, const size_t n) -> size_t {
+            const boost::system::error_code &ec, const size_t n) {
           bytes_read = n;
 
           // EOF itself occurs when there is no data available on the socket at
@@ -227,24 +227,14 @@ size_t TcpConn::receive(char *buff, const size_t len,
           if (ec && ec != boost::asio::error::eof &&
               ec != boost::asio::error::try_again) {
             read_result = ec;
-            return 0;
+            return;
           }
-          // Once the buffer is filled, indicate success, regardless the error
-          // condition on the socket. Defer to the next receive operation to
-          // handle that eventuality.
-          if (!throwTimeoutException) {
-            if (n != 0) {
-              read_result = boost::system::error_code{};
-            }
+          if (!throwTimeoutException && (n != 0)) {
+            read_result = boost::system::error_code{};
           }
           if (throwTimeoutException && (n == len)) {
             read_result = boost::system::error_code{};
-            return 0;
           }
-
-          // As the last read was successful, continue filling the fixed size
-          // buffer.
-          return len - n;
         });
 
     io_context_.reset();
