@@ -216,8 +216,8 @@ size_t TcpConn::receive(char *buff, const size_t len,
     // condition below.
     boost::asio::async_read(
         socket_, boost::asio::buffer(buff, len),
-        [&read_result, &bytes_read, len](const boost::system::error_code &ec,
-                                         const size_t n) -> size_t {
+        [&read_result, &bytes_read, len, throwTimeoutException](
+            const boost::system::error_code &ec, const size_t n) -> size_t {
           bytes_read = n;
 
           // EOF itself occurs when there is no data available on the socket at
@@ -232,7 +232,12 @@ size_t TcpConn::receive(char *buff, const size_t len,
           // Once the buffer is filled, indicate success, regardless the error
           // condition on the socket. Defer to the next receive operation to
           // handle that eventuality.
-          if (n == len) {
+          if (!throwTimeoutException) {
+            if (n != 0) {
+              read_result = boost::system::error_code{};
+            }
+          }
+          if (throwTimeoutException && (n == len)) {
             read_result = boost::system::error_code{};
             return 0;
           }
@@ -257,26 +262,24 @@ size_t TcpConn::receive(char *buff, const size_t len,
     throw boost::system::system_error{*read_result};
   }
 
-  if (throwTimeoutException) {
-    // If we timeout and haven't read anything, the
-    // connection is probably broken. A broken pipe is indicated by an
-    // EOF.
-    if (bytes_read == 0 && !read_result) {
-      std::cout << "Throwing a broken pipe exception\n";
-      LOGDEBUG("Throwing a broken pipe exception");
-      // Canceling the socket here makes testThinClientRemoteQueryFailover and
-      // some other tests pass but testThinClientDurableInterest fails.
-      // TODO: Alberto Gomez. Not sure what is the right thing to do.
-      socket_.cancel();
-      throw boost::system::system_error{boost::asio::error::eof};
-    }
+  // If we timeout and haven't read anything, the
+  // connection is probably broken. A broken pipe is indicated by an
+  // EOF.
+  if (bytes_read == 0 && !read_result) {
+    std::cout << "Throwing a broken pipe exception\n";
+    LOGDEBUG("Throwing a broken pipe exception");
+    // Canceling the socket here makes testThinClientRemoteQueryFailover and
+    // some other tests pass but testThinClientDurableInterest fails.
+    // TODO: Alberto Gomez. Not sure what is the right thing to do.
+    socket_.cancel();
+    throw boost::system::system_error{boost::asio::error::eof};
+  }
 
-    if (!read_result) {
-      std::cout << "Throwing a read timeout exception\n";
-      LOGDEBUG("Throwing a read timeout exception");
-      socket_.cancel();
-      throw boost::system::system_error{boost::asio::error::operation_aborted};
-    }
+  if (!read_result) {
+    std::cout << "Throwing a read timeout exception\n";
+    LOGDEBUG("Throwing a read timeout exception");
+    socket_.cancel();
+    throw boost::system::system_error{boost::asio::error::operation_aborted};
   }
 
   return bytes_read;
