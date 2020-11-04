@@ -53,7 +53,7 @@ std::string getClientLogName() {
                                 ->test_case_name());
   std::string testCaseName(
       ::testing::UnitTest::GetInstance()->current_test_info()->name());
-  std::string logFileName(testSuiteName + "/" + testCaseName + "/client.log");
+  std::string logFileName("/tmp/" + testSuiteName + "/" + testCaseName + "/client.log");
   return logFileName;
 }
 
@@ -144,6 +144,10 @@ void verifyMetadataWasRemovedAtFirstError() {
       }
     }
   }
+  std::cout << "timeoutErrors: " << timeoutErrors
+            << ", metadataRemovedDueToTimeout: " << metadataRemovedDueToTimeout
+            << ", metadataRemovedDueToIoErr: " << metadataRemovedDueToIoErr
+            << std::endl;
   ASSERT_TRUE((timeoutErrors == metadataRemovedDueToTimeout) &&
               (ioErrors == metadataRemovedDueToIoErr) &&
               (metadataRemovedDueToTimeout != metadataRemovedDueToIoErr));

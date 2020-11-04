@@ -14,42 +14,42 @@
 # limitations under the License.
 
 add_executable(cpp-integration-test
-  AuthInitializeTest.cpp
-  BasicIPv6Test.cpp
-  CacheXmlTest.cpp
-  CleanIdleConnections.cpp
-  ClientTransactionXATest.cpp
-  CommitConflictExceptionTest.cpp
-  CqPlusAuthInitializeTest.cpp
-  CqTest.cpp
-  DataSerializableTest.cpp
-  EnableChunkHandlerThreadTest.cpp
-  ExampleTest.cpp
-  ExpirationTest.cpp
-  FunctionExecutionTest.cpp
+#  AuthInitializeTest.cpp
+#  BasicIPv6Test.cpp
+#  CacheXmlTest.cpp
+#  CleanIdleConnections.cpp
+#  ClientTransactionXATest.cpp
+#  CommitConflictExceptionTest.cpp
+#  CqPlusAuthInitializeTest.cpp
+#  CqTest.cpp
+#  DataSerializableTest.cpp
+#  EnableChunkHandlerThreadTest.cpp
+#  ExampleTest.cpp
+#  ExpirationTest.cpp
+#  FunctionExecutionTest.cpp
   PartitionRegionOpsTest.cpp
-  PdxInstanceTest.cpp
-  PdxJsonTypeTest.cpp
-  PdxSerializerTest.cpp
-  Order.cpp
-  Order.hpp
-  RegionGetAllTest.cpp
-  RegionPutAllTest.cpp
-  RegionPutGetAllTest.cpp
-  RegisterKeysTest.cpp
-  ServerDisconnectWithListener.cpp
-  SimpleAuthInitialize.cpp
-  SimpleAuthInitialize.hpp
-  SimpleCqListener.cpp
-  SimpleCqListener.hpp
-  SslOneWayTest.cpp
-  SslTwoWayTest.cpp
-  StructTest.cpp
-  TransactionCleaningTest.cpp
-  WanDeserializationTest.cpp
-  PdxInstanceFactoryTest.cpp
-  CacheWriterTest.cpp
-  TransactionsTest.cpp
+#  PdxInstanceTest.cpp
+#  PdxJsonTypeTest.cpp
+#  PdxSerializerTest.cpp
+#  Order.cpp
+#  Order.hpp
+#  RegionGetAllTest.cpp
+#  RegionPutAllTest.cpp
+#  RegionPutGetAllTest.cpp
+#  RegisterKeysTest.cpp
+#  ServerDisconnectWithListener.cpp
+#  SimpleAuthInitialize.cpp
+#  SimpleAuthInitialize.hpp
+#  SimpleCqListener.cpp
+#  SimpleCqListener.hpp
+#  SslOneWayTest.cpp
+#  SslTwoWayTest.cpp
+#  StructTest.cpp
+#  TransactionCleaningTest.cpp
+#  WanDeserializationTest.cpp
+#  PdxInstanceFactoryTest.cpp
+#  CacheWriterTest.cpp
+#  TransactionsTest.cpp
 )
 
 target_compile_definitions(cpp-integration-test
