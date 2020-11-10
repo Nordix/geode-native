@@ -183,7 +183,9 @@ const std::vector<std::string> serverResultsToStrings(
     for (decltype(resultArray->size()) i = 0; i < resultArray->size(); i++) {
       auto value =
           std::dynamic_pointer_cast<CacheableString>(resultArray->at(i));
-      resultList.push_back(value->toString());
+      if (value != nullptr) {
+        resultList.push_back(value->toString());
+      }
     }
   }
 
@@ -250,4 +252,80 @@ TEST(FunctionExecutionTest, OnServersWithReplicatedRegionsInPool) {
     ASSERT_EQ(resultList[i],
               resultList[i + ON_SERVERS_TEST_REGION_ENTRIES_SIZE / 2]);
   }
+}
+
+void executeTestFunctionOnLoopAndExpectGeodeIOException(
+    std::shared_ptr<apache::geode::client::Pool> pool) {
+  auto routingObj = CacheableVector::create();
+  for (int i = 0; i < ON_SERVERS_TEST_REGION_ENTRIES_SIZE; i++) {
+    if (i % 2 == 0) {
+      continue;
+    }
+    routingObj->push_back(CacheableString::create("KEY--" + std::to_string(i)));
+  }
+
+  auto execution = FunctionService::onServers(pool);
+
+  while (true) {
+    // Filter on odd keys
+    std::shared_ptr<ResultCollector> rc;
+    std::shared_ptr<CacheableVector> executeFunctionResult;
+    try {
+      rc = execution.withArgs(routingObj).execute("MultiGetFunctionISlow");
+    } catch (apache::geode::client::NotConnectedException &ge) {
+      std::cout << "Exception in execute: " << ge.getMessage() << std::endl;
+      break;
+    }
+    executeFunctionResult = rc->getResult();
+
+    // Executed on 2 servers, we should have two sets of results
+    std::cout << "executeFunctionResult->size(): "
+              << executeFunctionResult->size() << std::endl;
+
+    auto resultList = serverResultsToStrings(executeFunctionResult);
+
+    ASSERT_EQ(resultList.size(), ON_SERVERS_TEST_REGION_ENTRIES_SIZE);
+  }
+}
+
+TEST(FunctionExecutionTest, OnServersOneServerGoesDown) {
+  Cluster cluster{
+      LocatorCount{1}, ServerCount{2},
+      CacheXMLFiles(
+          {std::string(getFrameworkString(FrameworkVariable::TestCacheXmlDir)) +
+               "/func_cacheserver1_pool.xml",
+           std::string(getFrameworkString(FrameworkVariable::TestCacheXmlDir)) +
+               "/func_cacheserver2_pool.xml"})};
+
+  cluster.start([&]() {
+    cluster.getGfsh()
+        .deploy()
+        .jar(getFrameworkString(FrameworkVariable::JavaObjectJarPath))
+        .execute();
+  });
+
+  auto cache = CacheFactory().set("log-level", "debug").create();
+  auto poolFactory = cache.getPoolManager().createFactory();
+
+  cluster.applyLocators(poolFactory);
+
+  auto pool =
+      poolFactory.setLoadConditioningInterval(std::chrono::milliseconds::zero())
+          .setIdleTimeout(std::chrono::milliseconds::zero())
+          .create("pool");
+
+  auto region = cache.createRegionFactory(RegionShortcut::PROXY)
+                    .setPoolName("pool")
+                    .create("partition_region");
+
+  for (int i = 0; i < ON_SERVERS_TEST_REGION_ENTRIES_SIZE; i++) {
+    region->put("KEY--" + std::to_string(i), "VALUE--" + std::to_string(i));
+  }
+
+  std::shared_ptr<std::thread> threadAux = std::make_shared<std::thread>(
+      executeTestFunctionOnLoopAndExpectGeodeIOException, pool);
+
+  cluster.getServers()[1].stop();
+
+  threadAux->join();
 }
