@@ -83,30 +83,31 @@ std::vector<ServerLocation> ThinClientLocatorHelper::getLocators() const {
 
 std::unique_ptr<Connector> ThinClientLocatorHelper::createConnection(
     const ServerLocation& location) const {
-  auto& systemProperties = m_poolDM->getConnectionManager()
-                               .getCacheImpl()
-                               ->getDistributedSystem()
-                               .getSystemProperties();
-  auto& hostname = location.getServerName();
+  auto& sys_prop = m_poolDM->getConnectionManager()
+                       .getCacheImpl()
+                       ->getDistributedSystem()
+                       .getSystemProperties();
+
   const auto port = location.getPort();
-  auto wait = systemProperties.connectTimeout();
-  auto maxBuffSizePool = systemProperties.maxSocketBufferSize();
-  if (systemProperties.sslEnabled()) {
+  auto timeout = sys_prop.connectTimeout();
+  const auto& hostname = location.getServerName();
+  auto buffer_size = m_poolDM->getSocketBufferSize();
+
+  if (sys_prop.sslEnabled()) {
     if (m_sniProxyHost.empty()) {
       return std::unique_ptr<Connector>(new TcpSslConn(
-          hostname, static_cast<uint16_t>(port), wait, maxBuffSizePool,
-          systemProperties.sslTrustStore(), systemProperties.sslKeyStore(),
-          systemProperties.sslKeystorePassword()));
+          hostname, static_cast<uint16_t>(port), timeout, buffer_size,
+          sys_prop.sslTrustStore(), sys_prop.sslKeyStore(),
+          sys_prop.sslKeystorePassword()));
     } else {
       return std::unique_ptr<Connector>(new TcpSslConn(
           hostname, static_cast<uint16_t>(port), m_sniProxyHost, m_sniProxyPort,
-          wait, maxBuffSizePool, systemProperties.sslTrustStore(),
-          systemProperties.sslKeyStore(),
-          systemProperties.sslKeystorePassword()));
+          timeout, buffer_size, sys_prop.sslTrustStore(),
+          sys_prop.sslKeyStore(), sys_prop.sslKeystorePassword()));
     }
   } else {
     return std::unique_ptr<Connector>(new TcpConn(
-        hostname, static_cast<uint16_t>(port), wait, maxBuffSizePool));
+        hostname, static_cast<uint16_t>(port), timeout, buffer_size));
   }
 }
 
@@ -131,9 +132,8 @@ std::shared_ptr<Serializable> ThinClientLocatorHelper::sendRequest(
       return nullptr;
     }
     char buff[BUFF_SIZE];
-    auto receivedLength =
-        conn->receive(buff, BUFF_SIZE, m_poolDM->getReadTimeout());
-    if (receivedLength <= 0) {
+    const auto receivedLength = conn->receive(buff, m_poolDM->getReadTimeout());
+    if (!receivedLength) {
       return nullptr;
     }
 
@@ -153,6 +153,8 @@ std::shared_ptr<Serializable> ThinClientLocatorHelper::sendRequest(
   } catch (const Exception& excp) {
     LOGFINE("Exception while querying locator: %s: %s", excp.getName().c_str(),
             excp.what());
+  } catch (...) {
+    LOGFINE("Exception while querying locator");
   }
 
   return nullptr;
