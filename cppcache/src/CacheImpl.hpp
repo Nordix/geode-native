@@ -168,7 +168,6 @@ class APACHE_GEODE_EXPORT CacheImpl {
    * full path starting at a root.
    *
    * @param path the path to the region
-   * @param[out] rptr the region pointer that is returned
    * @return the Region or null if not found
    * @throws IllegalArgumentException if path is null, the empty string, or "/"
    */
@@ -178,9 +177,6 @@ class APACHE_GEODE_EXPORT CacheImpl {
    * Returns a set of root regions in the cache. Does not cause any
    * shared regions to be mapped into the cache. This set is a snapshot and
    * is not backed by the Cache. The regions passed in are cleared.
-   *
-   * @param regions the region collection object containing the returned set of
-   * regions when the function returns
    */
   std::vector<std::shared_ptr<Region>> rootRegions();
 
@@ -302,8 +298,8 @@ class APACHE_GEODE_EXPORT CacheImpl {
   virtual DataInput createDataInput(const uint8_t* buffer, size_t len,
                                     Pool* pool) const;
 
-  PdxInstanceFactory createPdxInstanceFactory(
-      const std::string& className) const;
+  PdxInstanceFactory createPdxInstanceFactory(const std::string& className,
+                                              bool expectDomainClass) const;
 
   AuthenticatedView createAuthenticatedView(
       std::shared_ptr<Properties> userSecurityProperties,

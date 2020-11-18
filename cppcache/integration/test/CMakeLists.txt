@@ -27,6 +27,7 @@ add_executable(cpp-integration-test
   ExampleTest.cpp
   ExpirationTest.cpp
   FunctionExecutionTest.cpp
+  LocatorRequestsTest.cpp
   PartitionRegionOpsTest.cpp
   PdxInstanceTest.cpp
   PdxJsonTypeTest.cpp
@@ -48,6 +49,8 @@ add_executable(cpp-integration-test
   TransactionCleaningTest.cpp
   WanDeserializationTest.cpp
   PdxInstanceFactoryTest.cpp
+  CacheWriterTest.cpp
+  TransactionsTest.cpp
 )
 
 target_compile_definitions(cpp-integration-test
@@ -68,6 +71,7 @@ target_link_libraries(cpp-integration-test
     ACE::ACE
     GTest::gtest
     GTest::gtest_main
+    GTest::gmock
     Boost::boost
     Boost::system
     Boost::log

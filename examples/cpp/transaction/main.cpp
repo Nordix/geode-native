@@ -55,13 +55,17 @@ int getValueFromExternalSystem() {
 }
 
 int main(int argc, char** argv) {
-  auto cache = CacheFactory().set("log-level", "none").create();
-  auto poolFactory = cache.getPoolManager().createFactory();
+  auto cache = CacheFactory()
+      .set("log-level", "none")
+      .create();
 
   std::cout << "Created cache" << std::endl;
 
-  poolFactory.addLocator("localhost", 10334);
-  auto pool = poolFactory.create("pool");
+  cache.getPoolManager()
+      .createFactory()
+      .addLocator("localhost", 10334)
+      .create("pool");
+  
   auto regionFactory = cache.createRegionFactory(RegionShortcut::PROXY);
   auto region = regionFactory.setPoolName("pool").create("exampleRegion");
 
@@ -81,7 +85,9 @@ int main(int argc, char** argv) {
       std::cout << "Committed transaction - exiting" << std::endl;
       break;
     } catch ( ... ) {
-      transactionManager->rollback();
+      if (transactionManager->exists()){
+        transactionManager->rollback();
+      }
       std::cout << "Rolled back transaction - retrying(" << retries << ")" << std::endl;
     }
   }

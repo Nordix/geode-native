@@ -545,7 +545,6 @@ void ThinClientPoolDM::restoreMinConnections(std::atomic<bool>& isRunning) {
   int restored = 0;
 
   if (m_poolSize < min) {
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
     while (m_poolSize < min && limit-- && isRunning) {
       TcrConnection* conn = nullptr;
       bool maxConnLimit = false;
@@ -604,7 +603,8 @@ std::string ThinClientPoolDM::selectEndpoint(
       throw IllegalStateException("Locator query failed selecting an endpoint");
     }
     // Update Locator stats
-    getStats().setLocators((m_locHelper)->getCurLocatorsNum());
+    getStats().setLocators(
+        static_cast<int32_t>(m_locHelper->getCurLocatorsNum()));
     getStats().incLoctorResposes();
 
     std::string epNameStr = outEndpoint.getServerName() + ":" +
@@ -1464,17 +1464,10 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
             }
           }
           excludeServers.insert(ServerLocation(ep->name()));
-          if (error == GF_IOERR) {
-            if (m_clientMetadataService) {
-              auto sl = std::make_shared<BucketServerLocation>(ep->name());
-              LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                      sl->toString().c_str());
-              m_clientMetadataService->removeBucketServerLocation(sl);
-            }
-          }
+          removeEPFromMetadataIfError(error, ep);
         }
       } else {
-        return error;  // server exception while sending credentail message to
+        return error;  // server exception while sending credential message to
       }
       // server...
     }
@@ -1570,6 +1563,17 @@ GfErrType ThinClientPoolDM::sendSyncRequest(
     error = GF_NOTCON;
   }
   return error;
+}
+
+void ThinClientPoolDM::removeEPFromMetadataIfError(const GfErrType& error,
+                                                   const TcrEndpoint* ep) {
+  if ((error == GF_IOERR || error == GF_TIMEOUT) && (m_clientMetadataService)) {
+    auto sl = std::make_shared<BucketServerLocation>(ep->name());
+    LOGINFO("Removing bucketServerLocation %s due to %s",
+            sl->toString().c_str(),
+            (error == GF_IOERR ? "GF_IOERR" : "GF_TIMEOUT"));
+    m_clientMetadataService->removeBucketServerLocation(sl);
+  }
 }
 
 void ThinClientPoolDM::removeEPConnections(int numConn,
@@ -1672,7 +1676,6 @@ GfErrType ThinClientPoolDM::getConnectionToAnEndPoint(std::string epNameStr,
 GfErrType ThinClientPoolDM::createPoolConnectionToAEndPoint(
     TcrConnection*& conn, TcrEndpoint* theEP, bool& maxConnLimit,
     bool appThreadrequest) {
-  std::lock_guard<decltype(mutex_)> lock(mutex_);
   GfErrType error = GF_NOERR;
   conn = nullptr;
   int min = 0;
@@ -1737,7 +1740,6 @@ void ThinClientPoolDM::reducePoolSize(int num) {
 GfErrType ThinClientPoolDM::createPoolConnection(
     TcrConnection*& conn, std::set<ServerLocation>& excludeServers,
     bool& maxConnLimit, const TcrConnection* currentserver) {
-  std::lock_guard<decltype(mutex_)> lock(mutex_);
   GfErrType error = GF_NOERR;
   int max = m_attrs->getMaxConnections();
   if (max == -1) {
@@ -1893,7 +1895,6 @@ GfErrType ThinClientPoolDM::sendRequestToEP(const TcrMessage& request,
         _GEODE_SAFE_DELETE(conn);
       }
       if (putConnInPool) {
-        std::lock_guard<decltype(mutex_)> lock(mutex_);
         reducePoolSize(1);
       }
       currentEndpoint->setConnectionStatus(false);
@@ -1976,9 +1977,9 @@ GfErrType ThinClientPoolDM::sendRequestToEP(const TcrMessage& request,
     } else if (error != GF_NOERR) {
       currentEndpoint->setConnectionStatus(false);
       if (putConnInPool) {
-        std::lock_guard<decltype(mutex_)> lock(mutex_);
         removeEPConnections(1);
       }
+      removeEPFromMetadataIfError(error, currentEndpoint);
     }
 
     if (error == GF_NOERR || error == GF_CACHESERVER_EXCEPTION ||
@@ -2034,13 +2035,11 @@ std::shared_ptr<TcrEndpoint> ThinClientPoolDM::addEP(
 }
 
 void ThinClientPoolDM::netDown() {
-  std::lock_guard<decltype(mutex_)> lock(mutex_);
   close();
   reset();
 }
 
 void ThinClientPoolDM::pingServerLocal() {
-  std::lock_guard<decltype(mutex_)> lock(mutex_);
   std::lock_guard<decltype(m_endpointsLock)> guard(m_endpointsLock);
   for (auto& it : m_endpoints) {
     auto endpoint = it.second;
@@ -2144,7 +2143,6 @@ bool ThinClientPoolDM::canItBeDeleted(TcrConnection* conn) {
   if (conn && candidateForDeletion) {
     TcrEndpoint* endPt = conn->getEndpointObject();
     {
-      std::lock_guard<decltype(mutex_)> lock(mutex_);
       std::lock_guard<decltype(endPt->getQueueHostedMutex())> guardQueue(
           endPt->getQueueHostedMutex());
       bool queue = endPt->isQueueHosted();
@@ -2372,7 +2370,7 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
   if (theEP != nullptr) {
     conn = getFromEP(theEP);
     if (!conn) {
-      LOGFINER("Creating connection to endpint as not found in pool ");
+      LOGFINER("Creating connection to endpoint as not found in pool ");
       *error = createPoolConnectionToAEndPoint(conn, theEP, maxConnLimit, true);
       if (*error == GF_CLIENT_WAIT_TIMEOUT ||
           *error == GF_CLIENT_WAIT_TIMEOUT_REFRESH_PRMETADATA) {
@@ -2391,13 +2389,8 @@ TcrConnection* ThinClientPoolDM::getConnectionFromQueueW(
                   version);
         }
         return nullptr;
-      } else if (*error == GF_IOERR) {
-        if (m_clientMetadataService) {
-          auto sl = std::make_shared<BucketServerLocation>(theEP->name());
-          LOGINFO("Removing bucketServerLocation %s due to GF_IOERR",
-                  sl->toString().c_str());
-          m_clientMetadataService->removeBucketServerLocation(sl);
-        }
+      } else {
+        removeEPFromMetadataIfError(*error, theEP);
       }
     }
   }

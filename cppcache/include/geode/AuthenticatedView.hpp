@@ -63,7 +63,6 @@ class APACHE_GEODE_EXPORT AuthenticatedView : public RegionService {
    * After this cache is closed, any further
    * method call on this cache or any region object will throw
    * <code>CacheClosedException</code>, unless otherwise noted.
-   * @param keepalive whether to keep a durable client's queue alive
    * @throws CacheClosedException,  if the cache is already closed.
    */
   void close() override;
@@ -85,9 +84,6 @@ class APACHE_GEODE_EXPORT AuthenticatedView : public RegionService {
    * Returns a set of root regions in the cache. This set is a snapshot and
    * is not backed by the Cache. The vector passed in is cleared and the
    * regions are added to it.
-   *
-   * @param regions the returned set of
-   * regions
    */
   std::vector<std::shared_ptr<Region>> rootRegions() const override;
 
@@ -107,8 +103,18 @@ class APACHE_GEODE_EXPORT AuthenticatedView : public RegionService {
   /**
    * Returns a factory that can create a {@link PdxInstance}.
    * @param className the fully qualified class name that the PdxInstance will
-   * become
-   * when it is fully deserialized.
+   * become when it is fully deserialized.
+   * @param expectDomainClass Whether or not created PdxType represents a
+   * Java domain class.
+   * @return the factory
+   */
+  PdxInstanceFactory createPdxInstanceFactory(
+      const std::string& className, bool expectDomainClass) const override;
+
+  /**
+   * Returns a factory that can create a {@link PdxInstance}.
+   * @param className the fully qualified class name that the PdxInstance will
+   * become when it is fully deserialized.
    * @return the factory
    */
   PdxInstanceFactory createPdxInstanceFactory(
