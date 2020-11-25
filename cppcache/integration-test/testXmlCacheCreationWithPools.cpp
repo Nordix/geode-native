@@ -30,6 +30,7 @@
 #define SERVER2 s2p2
 
 #include "CacheHelper.hpp"
+#include <geode/Region.hpp>
 
 using apache::geode::client::Cache;
 using apache::geode::client::CacheableStringArray;
@@ -37,6 +38,7 @@ using apache::geode::client::CacheFactory;
 using apache::geode::client::CacheHelper;
 using apache::geode::client::Exception;
 using apache::geode::client::Pool;
+using apache::geode::client::Region;
 
 static bool isLocalServer = false;
 static bool isLocator = false;
@@ -311,9 +313,9 @@ int testXmlCacheCreationWithPools() {
     std::cout << "vc[" << i << "].m_regionPtr=" << vrp.at(i).get() << std::endl;
     std::cout << "vc[" << i << "]=" << vrp.at(i)->getName() << std::endl;
   }
-  auto regPtr1 = cptr->getRegion("Root1");
+  std::weak_ptr<Region> regPtr1 = cptr->getRegion("Root1");
 
-  auto &&vr = regPtr1->subregions(true);
+  auto &&vr = regPtr1.lock()->subregions(true);
   std::cout << "Test if the number of sub regions with the root region Root1 "
                "are correct"
             << std::endl;
@@ -333,14 +335,14 @@ int testXmlCacheCreationWithPools() {
 
   // TODO - global Issue is that we cannot have config with server and locator
   // pools. Check if this assumption is valid and if so then break up this test.
-  auto subRegPtr = vr.at(0);
+  std::weak_ptr<Region> subRegPtr = vr.at(0);
 
-  auto regPtr2 = cptr->getRegion("Root2");
+  std::weak_ptr<Region> regPtr2 = cptr->getRegion("Root2");
 
   std::cout << "Test if the number of sub regions with the root region Root2 "
                "are correct"
             << std::endl;
-  vr = regPtr2->subregions(true);
+  vr = regPtr2.lock()->subregions(true);
   std::cout << "  vr.size=" << vr.size() << std::endl;
   if (vr.size() != 0) {
     std::cout << "Number of Subregions does not match" << std::endl;
@@ -352,9 +354,9 @@ int testXmlCacheCreationWithPools() {
 
   std::cout << "Test the attributes of region" << std::endl;
 
-  const auto &poolNameReg1 = regPtr1->getAttributes().getPoolName();
-  const auto &poolNameSubReg = subRegPtr->getAttributes().getPoolName();
-  const auto &poolNameReg2 = regPtr2->getAttributes().getPoolName();
+  const auto &poolNameReg1 = regPtr1.lock()->getAttributes().getPoolName();
+  const auto &poolNameSubReg = subRegPtr.lock()->getAttributes().getPoolName();
+  const auto &poolNameReg2 = regPtr2.lock()->getAttributes().getPoolName();
 
   if (poolNameReg1 != "test_pool_1") {
     std::cout << "Wrong pool name for region 1" << std::endl;
@@ -369,9 +371,10 @@ int testXmlCacheCreationWithPools() {
     return -1;
   }
 
-  auto poolOfReg1 = cptr->getPoolManager().find(poolNameReg1);
-  auto poolOfSubReg = cptr->getPoolManager().find(poolNameSubReg);
-  auto poolOfReg2 = cptr->getPoolManager().find(poolNameReg2);
+  std::weak_ptr<Pool> poolOfReg1 = cptr->getPoolManager().find(poolNameReg1);
+  std::weak_ptr<Pool> poolOfSubReg =
+      cptr->getPoolManager().find(poolNameSubReg);
+  std::weak_ptr<Pool> poolOfReg2 = cptr->getPoolManager().find(poolNameReg2);
   SLIST locators;
   SLIST servers;
   SLIST emptylist;
@@ -391,16 +394,16 @@ int testXmlCacheCreationWithPools() {
   // THIS MUST MATCH WITH THE CLIENT CACHE XML LOADED
 
   bool check1 = checkPoolAttribs(
-      poolOfReg1, locators, emptylist, 12345, 23456, 3, 7, 3,
+      poolOfReg1.lock(), locators, emptylist, 12345, 23456, 3, 7, 3,
       std::chrono::milliseconds(5555), 12345, "test_pool_1", 23456,
       "ServerGroup1", 32768, true, 900123, 567, 0, 10123, true, 250001);
 
   bool check2 = checkPoolAttribs(
-      poolOfReg2, emptylist, servers, 23456, 34567, 2, 8, 5,
+      poolOfReg2.lock(), emptylist, servers, 23456, 34567, 2, 8, 5,
       std::chrono::milliseconds(6666), 23456, "test_pool_2", 34567,
       "ServerGroup2", 65536, false, 800222, 678, 1, 20345, false, 5000);
   bool check3 = checkPoolAttribs(
-      poolOfSubReg, emptylist, servers, 23456, 34567, 2, 8, 5,
+      poolOfSubReg.lock(), emptylist, servers, 23456, 34567, 2, 8, 5,
       std::chrono::milliseconds(6666), 23456, "test_pool_2", 34567,
       "ServerGroup2", 65536, false, 800222, 678, 1, 20345, false, 5000);
 
