@@ -1177,14 +1177,9 @@ void TcrEndpoint::closeConnection(TcrConnection*& conn) {
 void TcrEndpoint::closeConnections() {
   m_opConnections.close();
   m_ports.clear();
-
-  m_cacheImpl->doIfDestroyNotPending([&]() {
-    if (!m_cacheImpl->isClosed()) {
-      m_maxConnections = m_cacheImpl->getDistributedSystem()
-                             .getSystemProperties()
-                             .connectionPoolSize();
-    }
-  });
+  m_maxConnections = m_cacheImpl->getDistributedSystem()
+                         .getSystemProperties()
+                         .connectionPoolSize();
 }
 
 /*
