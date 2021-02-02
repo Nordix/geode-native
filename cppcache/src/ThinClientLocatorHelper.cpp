@@ -36,6 +36,7 @@
 #include "TcpSslConn.hpp"
 #include "TcrConnectionManager.hpp"
 #include "ThinClientPoolDM.hpp"
+#include "Version.hpp"
 
 namespace apache {
 namespace geode {
@@ -117,7 +118,8 @@ std::shared_ptr<Serializable> ThinClientLocatorHelper::sendRequest(
     auto conn = createConnection(location);
     auto data =
         m_poolDM->getConnectionManager().getCacheImpl()->createDataOutput();
-    data.writeInt(static_cast<int32_t>(1001));  // GOSSIPVERSION
+    data.writeInt(static_cast<int32_t>(1002));  // GOSSIPVERSION
+    data.writeInt(static_cast<int16_t>(121));   // ERICSSON_GEODE 1.13.0.1
     data.writeObject(request);
     auto sentLength = conn->send(
         reinterpret_cast<char*>(const_cast<uint8_t*>(data.getBuffer())),
@@ -264,14 +266,15 @@ GfErrType ThinClientLocatorHelper::getEndpointForNewFwdConn(
   }
 }
 
-GfErrType ThinClientLocatorHelper::updateLocators(
-    const std::string& serverGrp) {
+GfErrType ThinClientLocatorHelper::updateLocators(const std::string& serverGrp,
+                                                  bool requestInternal) {
   auto locators = getLocators();
   for (const auto& loc : locators) {
     LOGFINER("Querying locator list at: [%s:%d] for update from group [%s]",
              loc.getServerName().c_str(), loc.getPort(), serverGrp.c_str());
 
-    auto request = std::make_shared<LocatorListRequest>(serverGrp);
+    auto request =
+        std::make_shared<LocatorListRequest>(serverGrp, requestInternal);
     auto response = std::dynamic_pointer_cast<LocatorListResponse>(
         sendRequest(loc, request));
     if (response == nullptr) {

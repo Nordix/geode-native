@@ -375,6 +375,15 @@ namespace Apache
         /// </param>
         PoolFactory^ SetMultiuserAuthentication(bool multiuserAuthentication);
 
+       /// <summary>
+        /// Sets whether pool will request internal or external addresses
+        /// of locators
+        /// </summary>
+        /// <param>
+        /// requestInternal should be true/false. Default value is false;
+        /// </param>
+        PoolFactory^ SetRequestLocatorInternalAddress(bool requestInternal);
+
         /// <summary>
         /// Resets the configuration of this factory to its defaults.
         /// </summary>

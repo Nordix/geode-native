@@ -156,6 +156,14 @@ class PoolAttributes {
 
   void setPRSingleHopEnabled(bool enabled) { m_isPRSingleHopEnabled = enabled; }
 
+  bool getRequestLocatorInternalAddress() const {
+    return m_requestLocatorInternalAddress;
+  }
+
+  void setRequestLocatorInternalAddress(bool requestInternal) {
+    m_requestLocatorInternalAddress = requestInternal;
+  }
+
   bool getMultiuserSecureModeEnabled() const { return m_multiuserSecurityMode; }
 
   void setMultiuserSecureModeEnabled(bool multiuserSecureMode) {
@@ -192,6 +200,7 @@ class PoolAttributes {
   bool m_subsEnabled;
   bool m_multiuserSecurityMode;
   bool m_isPRSingleHopEnabled;
+  bool m_requestLocatorInternalAddress;
 
   std::string m_serverGrp;
   std::vector<std::string> m_initLocList;

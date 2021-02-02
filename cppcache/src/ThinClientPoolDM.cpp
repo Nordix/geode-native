@@ -2015,7 +2015,9 @@ void ThinClientPoolDM::updateLocatorList(std::atomic<bool>& isRunning) {
   while (isRunning) {
     update_locators_semaphore_.acquire();
     if (isRunning && !m_connManager.isNetDown()) {
-      (m_locHelper)->updateLocators(getServerGroup());
+      (m_locHelper)
+          ->updateLocators(getServerGroup(),
+                           m_attrs->getRequestLocatorInternalAddress());
     }
   }
   LOGFINE("Ending updateLocatorList thread for pool %s", m_poolName.c_str());
