@@ -1,0 +1,174 @@
+name: Linux CI
+
+on:
+  push:
+
+jobs:
+  upload-docker-images:
+    if: "!contains(github.event.head_commit.message, 'skip-linux-ci')"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    env:
+      BASE_IMAGE: docker.pkg.github.com/${{ github.repository }}/base-${{ matrix.os }}:${{ github.sha }}
+      IMAGE_NAME: docker.pkg.github.com/${{ github.repository }}/source-${{ matrix.os }}:${{ github.sha }}
+
+    steps:
+      - name: Convert Docker images to lowercase
+        run: |
+          echo "BASE_IMAGE=${BASE_IMAGE,,}" >>${GITHUB_ENV}
+          echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Build base image
+        run: |
+          docker build -t "${BASE_IMAGE}" docker/${{ matrix.os }}
+      - name: Build source image
+        run: |
+          docker build -t "${IMAGE_NAME}" \
+                 --build-arg commit="${{ github.sha }}" \
+                 --build-arg repository="${{ github.repository }}" \
+                 --build-arg base_image="${BASE_IMAGE}" \
+                 ci/docker/source
+      - name: Login to GitHub Packages Docker Registry
+        uses: docker/login-action@v1
+        with:
+          registry: docker.pkg.github.com
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push image to GitHub Containers Registry
+        run: |
+          docker push "${IMAGE_NAME}"
+
+  unit-test:
+    if: "!contains(github.event.head_commit.message, 'skip-linux-ci')"
+    runs-on: ubuntu-latest
+    needs:
+      - upload-docker-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    container:
+      image: docker.pkg.github.com/${{ github.repository }}/source-${{ matrix.os }}:${{ github.sha }}
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Execute tests
+        run: |
+          if ! /build/cppcache/test/apache-geode_unittests --gtest_shuffle; then
+            echo "retrying tests"
+            /build/cppcache/test/apache-geode_unittests --gtest_shuffle
+          fi
+
+  old-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-linux-ci')"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    container:
+      image: docker.pkg.github.com/nordix/${{ github.event.repository.name }}/source-${{ matrix.os }}:${{ github.sha }}
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    needs:
+      - upload-docker-images
+    steps:
+      - name: Execute tests
+        run: |
+          cmake -E chdir /build/cppcache/integration-test \
+          ctest --timeout 500 -C Debug -j$(( $(nproc) / 3 + 1 )) --output-on-failure --schedule-random --repeat until-pass:3
+
+  new-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-linux-ci')"
+    runs-on: ubuntu-latest
+    needs:
+      - upload-docker-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    container:
+      image: docker.pkg.github.com/nordix/${{ github.repository }}/source-${{ matrix.os }}:${{ github.sha }}
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Execute tests
+        run: |
+          cmake -E chdir /build/cppcache/integration/test \
+          ctest --timeout 500 -j$(( $(nproc) / 3 + 1 )) --output-on-failure --schedule-random --repeat until-pass:3
+
+  test-ipv6:
+    if: "!contains(github.event.head_commit.message, 'skip-linux-ci')"
+    runs-on: ubuntu-latest
+    needs:
+      - upload-docker-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    container:
+      image: docker.pkg.github.com/nordix/${{ github.repository }}/source-${{ matrix.os }}:${{ github.sha }}
+      credentials:
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Execute tests
+        run: cmake -E chdir /build/cppcache/integration/test ctest -R BasicIPv6Test -j$(nproc) --output-on-failure --schedule-random
+
+  delete-docker-images:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs:
+      - upload-docker-images
+      - unit-test
+      - old-integration-test
+      - new-integration-test
+      - test-ipv6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, rhel-7, rhel-8, centos-7, centos-8 ]
+    env:
+      IMAGE_NAME: source-${{ matrix.os }}
+    steps:
+      - name: Obtain package ID
+        id: package-id
+        uses: actions/github-script@v3
+        with:
+          script: |
+            const query = `query($owner:String!, $name:String!, $image:String!, $tag:String!) {
+              repository(owner:$owner, name:$name){
+                packages(names:[$image], first: 1) {
+                  nodes {
+                    version(version:$tag) {
+                      id
+                    }
+                  }
+                }
+              }
+            }`;
+
+            const variables = {
+              owner: context.repo.owner,
+              name: context.repo.repo,
+              image: `source-${{ matrix.os }}`,
+              tag: `${{ github.sha }}`
+            }
+
+            const result = await github.graphql(query, variables)
+            const package_id = result["repository"]["packages"]["nodes"][0]["version"]["id"]
+            console.log("Package ID is " + package_id)
+            return package_id
+          result-encoding: string
+
+      - name: Delete package
+        uses: actions/delete-package-versions@v1
+        with:
+          package-version-ids: '${{steps.package-id.outputs.result}}'
