@@ -1,0 +1,81 @@
+name: Check source CI
+
+on:
+  push:
+
+env:
+  GEODE_VERSION: 1.13.2
+  GEODE_HOME: /apache-geode
+
+jobs:
+  rat:
+    if: "!contains(github.event.head_commit.message, 'skip-check-source-ci')"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    container:
+      image: gaussianrecurrence/geode-native-clang-tools:develop
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Install geode
+        run: curl -fsSL "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar zxvf - && mv apache-geode-${GEODE_VERSION} /apache-geode
+      - name: Install rat
+        run: |
+          export RAT_URL="https://www.apache.org/dyn/closer.lua?action=download&filename=creadur/apache-rat-${RAT_VERSION}/apache-rat-${RAT_VERSION}-bin.tar.gz"
+          curl -fsSL "${RAT_URL}" | tar zxvf - && mv apache-rat-${RAT_VERSION} ..
+          unset RAT_URL
+        env:
+          RAT_VERSION: 0.13
+      - name: Install doxygen
+        run: apt update && apt install -yq doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && export RAT_HOME=$GITHUB_WORKSPACE/../apache-rat-$RAT_VERSION && cmake -Bbuild -DUSE_RAT=ON
+        env:
+          RAT_VERSION: 0.13
+      - name: Run check
+        run: cmake --build build/ --target rat-check
+
+  clang-format:
+    if: "!contains(github.event.head_commit.message, 'skip-check-source-ci')"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    container:
+      image: gaussianrecurrence/geode-native-clang-tools:develop
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Install geode
+        run: curl -fsSL "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar zxvf - && mv apache-geode-${GEODE_VERSION} /apache-geode
+      - name: Install doxygen
+        run: apt update && apt install -yq doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild
+      - name: Run check
+        run: cmake --build build/ --target all-clangformat && git diff --exit-code
+
+  clang-tidy:
+    if: "!contains(github.event.head_commit.message, 'skip-check-source-ci')"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    container:
+      image: gaussianrecurrence/geode-native-clang-tools:develop
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Install geode
+        run: curl -fsSL "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar zxvf - && mv apache-geode-${GEODE_VERSION} /apache-geode
+      - name: Install doxygen
+        run: apt update && apt install -yq doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+      - name: Run check
+        run: cmake --build build/ -- -j$(nproc)

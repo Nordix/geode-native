@@ -1,0 +1,81 @@
+{
+  "variables": {
+    "aws_region": "",
+    "googlecompute_zone": "",
+    "googlecompute_project": "",
+    "image_family": "gh-runner",
+    "image_name_prefix": "{{user `image_family`}}"
+  },
+  "builders": [
+    {
+      "type": "googlecompute",
+      "machine_type": "n1-standard-1",
+      "project_id": "{{user `googlecompute_project`}}",
+      "zone": "{{user `googlecompute_zone`}}",
+      "source_image_family": "ubuntu-2004-lts",
+      "image_name": "{{user `image_name_prefix`}}-{{timestamp}}",
+      "image_family": "{{user `image_family`}}",
+      "image_labels": {
+        "owner": "{{user `owner`}}",
+        "repository": "{{user `repository`}}",
+        "branch": "{{user `branch`}}"
+      },
+      "ssh_username": "packer"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "gh-runner/update.sh"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "linux/files",
+      "destination": "/tmp"
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "linux/setup-files.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "gh-runner/install-docker.sh",
+        "gh-runner/create-user.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "inline": [
+        "apt-get -y install jq"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "gh-runner/files",
+      "destination": "/tmp"
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "gh-runner/setup-files.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{.Vars}} sudo -E -S bash '{{.Path}}'",
+      "scripts": [
+        "gh-runner/cleanup.sh"
+      ]
+    }
+  ]
+}

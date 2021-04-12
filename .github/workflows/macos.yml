@@ -1,0 +1,184 @@
+name: MacOS CI
+
+on:
+  push:
+
+env:
+  GEODE_VERSION: 1.13.2
+
+jobs:
+  unit-test:
+    if: "!contains(github.event.head_commit.message, 'skip-macos-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest ]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-mac
+        with:
+          path: ~/apache-geode
+          key: apache-geode-mac
+      - name: Install geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-mac.outputs.cache-hit}}
+        run: |
+          if [[ "$CACHE_HIT" != 'true' ]]; then
+            wget "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" --quiet -O - | tar xzf - && mv apache-geode-${GEODE_VERSION} ~/apache-geode
+          fi
+      - name: Install doxygen
+        run: brew install doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl\@1.1/
+      - name: Build targets
+        run: cmake --build build/ --target apache-geode_unittests -- -j4
+      - name: Execute tests
+        run: |
+          if ! build/cppcache/test/apache-geode_unittests --gtest_shuffle; then
+            echo "retrying tests"
+            build/cppcache/test/apache-geode_unittests --gtest_shuffle
+          fi
+
+  old-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-macos-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest ]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-mac
+        with:
+          path: ~/apache-geode
+          key: apache-geode-mac
+      - name: Install geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-mac.outputs.cache-hit}}
+        run: |
+          if [[ "$CACHE_HIT" != 'true' ]]; then
+            wget "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" --quiet -O - | tar xzf - && mv apache-geode-${GEODE_VERSION} ~/apache-geode
+          fi
+      - name: Install doxygen
+        run: brew install doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl\@1.1/
+      - name: Build targets
+        run: cmake --build build/ --target javaobject -- -j4 && cmake --build build/ --target unit_test_callbacks -- -j4 && cmake --build build/ --target cppcache-integration-tests -- -j4
+      - name: Execute tests
+        run: cmake -E chdir build/cppcache/integration-test ctest --timeout 500 -C Debug -j1 --output-on-failure --schedule-random --repeat until-pass:3
+
+  new-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-macos-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest ]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-mac
+        with:
+          path: ~/apache-geode
+          key: apache-geode-mac
+      - name: Install geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-mac.outputs.cache-hit}}
+        run: |
+          if [[ "$CACHE_HIT" != 'true' ]]; then
+            wget "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" --quiet -O - | tar xzf - && mv apache-geode-${GEODE_VERSION} ~/apache-geode
+          fi
+      - name: Install doxygen
+        run: brew install doxygen
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl\@1.1/
+      - name: Build targets
+        run: cmake --build build/ --target cpp-integration-test -- -j4
+      - name: Execute tests
+        run: cmake -E chdir build/cppcache/integration/test ctest -j2 --output-on-failure --schedule-random --repeat until-pass:3
+
+  acceptance-test:
+#    if: "!contains(github.event.head_commit.message, 'skip-macos-ci')"
+    if: false
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ macos-latest ]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+      - name: Cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-mac
+        with:
+          path: ~/apache-geode
+          key: apache-geode-mac
+      - name: Install geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-mac.outputs.cache-hit}}
+        run: |
+          if [[ "$CACHE_HIT" != 'true' ]]; then
+            wget "https://www.apache.org/dyn/closer.lua?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" --quiet -O - | tar xzf - && mv apache-geode-${GEODE_VERSION} ~/apache-geode
+          fi
+      - name: Install doxygen
+        run: brew install doxygen
+      - name: Install docker
+        run: |
+          # https://github.com/actions/virtual-environments/issues/1143#issuecomment-652264388
+          # refs:
+          # https://github.com/MicrosoftDocs/vsts-docs/issues/3784
+          # https://forums.docker.com/t/docker-for-mac-unattended-installation/27112
+
+          brew install docker --cask --no-quarantine
+          # allow the app to run without confirmation
+          xattr -d -r com.apple.quarantine /Applications/Docker.app
+
+          # preemptively do docker.app's setup to avoid any gui prompts
+          sudo /bin/cp /Applications/Docker.app/Contents/Library/LaunchServices/com.docker.vmnetd /Library/PrivilegedHelperTools
+          sudo /bin/cp /Applications/Docker.app/Contents/Resources/com.docker.vmnetd.plist /Library/LaunchDaemons/
+          sudo /bin/chmod 544 /Library/PrivilegedHelperTools/com.docker.vmnetd
+          sudo /bin/chmod 644 /Library/LaunchDaemons/com.docker.vmnetd.plist
+          sudo /bin/launchctl load /Library/LaunchDaemons/com.docker.vmnetd.plist
+
+          # refs:
+          # https://stackoverflow.com/a/35979292/425458
+          sleep 5
+          [[ $(uname) == 'Darwin' ]] || { echo "This function only runs on macOS." >&2; exit 2; }
+          echo "-- Starting Docker.app, if necessary..."
+
+          open -g -a Docker.app || exit
+
+          # Wait for the server to start up, if applicable.
+          i=0
+          while ! docker system info &>/dev/null; do
+            (( i++ == 0 )) && printf %s '-- Waiting for Docker to finish starting up...' || printf '.'
+            sleep 1
+          done
+          (( i )) && printf '\n'
+
+          echo "-- Docker is ready."
+      - name: Create build directory
+        run: mkdir build
+      - name: Configure CMake project
+        run: export GEODE_HOME=~/apache-geode && cmake -Bbuild -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl\@1.1/
+      - name: Build targets
+        run: cmake --build build/ --target cpp-acceptance-test -- -j$(nproc)
+      - name: Execute tests
+        run: cmake -E chdir build/cppcache/acceptance-test ctest -j1 --output-on-failure --schedule-random

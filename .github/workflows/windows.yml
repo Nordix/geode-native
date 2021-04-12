@@ -1,0 +1,299 @@
+name: Windows CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  GEODE_VERSION: 1.13.2
+
+jobs:
+  unit-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: cmake --build C:\build --target apache-geode_unittests -- /m
+      - name: unit tests
+        run: |
+          C:\build\cppcache\test\Debug\apache-geode_unittests.exe --gtest_shuffle
+          if (-Not $?) {
+            C:\build\cppcache\test\Debug\apache-geode_unittests.exe --gtest_shuffle
+          }
+
+  cli-managed-unit-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: cmake --build C:\build --target Apache.Geode.Tests2 -- /m
+      - name: unit tests managed
+        run: cmake -E chdir C:\build\clicache\test2 ctest -C Debug --output-on-failure
+
+  cli-unmanaged-unit-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: cmake --build C:\build --target Apache.Geode.Test -- /m
+      - name: unit tests unmanaged
+        run: cmake -E chdir C:\build\clicache\test ctest -C Debug --output-on-failure
+
+  old-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: |
+          cmake --build C:\build --target javaobject -- /m
+          cmake --build C:\build --target unit_test_callbacks -- /m
+          cmake --build C:\build --target cppcache-integration-tests -- /m
+      - name: Execute old C++ ITs
+        run: cmake -E chdir C:\build\cppcache\integration-test ctest --timeout 1000 -C Debug -j1 --output-on-failure --schedule-random --repeat until-pass:3
+
+  new-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          mkdir C:\geode-native
+          mv * C:\geode-native\
+          cd C:\geode-native
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: cmake --build C:\build --target cpp-integration-test -- /m
+      - name: Execute new C++ ITs
+        run: cmake -E chdir C:\build\cppcache\integration\test ctest -j2 --output-on-failure --schedule-random --repeat until-pass:3
+
+  old-cli-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: |
+          cmake --build C:\build --target javaobject -- /m
+          cmake --build C:\build --target Apache.Geode.Client.UnitTests -- /m
+      - name: Execute old C# ITs
+        run: cmake -E chdir C:\build\clicache\integration-test ctest --timeout 2000 -C Debug -j1 --output-on-failure --schedule-random --repeat until-pass:3
+
+  new-cli-integration-test:
+    if: "!contains(github.event.head_commit.message, 'skip-win-ci')"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-2016 ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: cache geode
+        uses: actions/cache@v2.1.4
+        id: cache-geode-windows
+        with:
+          path: C:\apache-geode
+          key: apache-geode-windows
+      - name: Install Geode
+        env:
+          CACHE_HIT: ${{steps.cache-geode-windows.outputs.cache-hit}}
+        run: |
+          If ($env:CACHE_HIT -ne "true") {
+            iwr "https://downloads.apache.org/geode/$env:GEODE_VERSION/apache-geode-$env:GEODE_VERSION.tgz" -OutFile apache-geode.tgz
+            7z x apache-geode.tgz
+            7z x apache-geode.tar
+            mv apache-geode-$env:GEODE_VERSION C:\apache-geode
+            rm apache*.t*
+          }
+      - name: Install dependencies
+        run: choco install doxygen.install nuget.commandline openssl -confirm
+      - name: Create build directory
+        run: mkdir C:\build
+      - name: Configure CMake project
+        run: |
+          mkdir C:\geode-native
+          mv * C:\geode-native\
+          cd C:\geode-native
+          $env:GEODE_HOME="C:\apache-geode"
+          cmake -BC:\build -A x64 -T "v141,version=14.16,host=x64" -DCMAKE_SYSTEM_VERSION="10.0.16299.0"
+      - name: Build targets
+        run: |
+          cmake --build C:\build --target javaobject -- /m
+          cmake --build C:\build --target Apache.Geode.IntegrationTests2 -- /m
+      - name: Execute new C# ITs
+        run: cmake -E chdir C:\build\clicache\integration-test2 ctest -j2 --output-on-failure --schedule-random --repeat until-pass:3
