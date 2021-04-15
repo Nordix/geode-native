@@ -34,9 +34,7 @@ RUN apt update && \
 
 RUN . /etc/os-release && \
     curl -s https://download.bell-sw.com/pki/GPG-KEY-bellsoft | apt-key add - && \
-    apt-add-repository "deb http://apt.bell-sw.com/ stable main" && \
-    curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    apt-add-repository "deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-6.0 main"
+    apt-add-repository "deb http://apt.bell-sw.com/ stable main"
 
 RUN apt update && apt -yq full-upgrade && apt-get -y install \
         build-essential \
@@ -53,7 +51,7 @@ RUN apt update && apt -yq full-upgrade && apt-get -y install \
     apt-get -y autoremove && \
     apt-get autoclean
 
-RUN pip3 install --upgrade pip && \
+RUN pip3 install --upgrade "pip<21.0" && \
     pip3 install cpp-coveralls
 
 # Get latest release of CMake ignoring pre-releases
@@ -65,6 +63,8 @@ RUN installer=$(mktemp) \
         | tr -d '"') \
     && bash ${installer} --skip-license --prefix=/usr/local \
     && rm ${installer}
+
+# Install Docker client
 
 ARG GEODE_VERSION=1.13.2
 ENV GEODE_HOME /apache-geode-${GEODE_VERSION}

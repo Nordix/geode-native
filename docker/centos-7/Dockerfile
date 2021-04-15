@@ -35,7 +35,8 @@ RUN yum update -y && \
         bellsoft-java11 \
         doxygen \
         python3-pip \
-        which && \
+        which \
+        iproute && \
     yum -y clean all
 
 RUN pip3 install --upgrade pip && \
