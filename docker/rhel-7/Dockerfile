@@ -38,6 +38,7 @@ RUN yum-config-manager --enable ubi-server-rhscl-7-rpms && \
         openssl-devel \
         rh-python36-python-pip \
         bellsoft-java11 \
+        iproute \
         http://mirror.centos.org/centos/7/os/x86_64/Packages/doxygen-1.8.5-4.el7.x86_64.rpm && \
     yum -y clean all
 
@@ -56,6 +57,6 @@ RUN installer=$(mktemp) \
 
 ARG GEODE_VERSION=1.13.2
 ENV GEODE_HOME /apache-geode-${GEODE_VERSION}
-RUN curl -L -s "https://www.apache.org/dyn/closer.cgi?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
+RUN curl -L -s "https://archive.apache.org/dist/geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
 
 CMD ["bash"]

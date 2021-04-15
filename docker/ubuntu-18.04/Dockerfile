@@ -34,9 +34,7 @@ RUN apt update && \
 
 RUN . /etc/os-release && \
     curl -s https://download.bell-sw.com/pki/GPG-KEY-bellsoft | apt-key add - && \
-    apt-add-repository "deb http://apt.bell-sw.com/ stable main" && \
-    curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    apt-add-repository "deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-6.0 main"
+    apt-add-repository "deb http://apt.bell-sw.com/ stable main" 
 
 RUN apt update && apt -yq full-upgrade && apt-get -y install \
         build-essential \
@@ -49,7 +47,8 @@ RUN apt update && apt -yq full-upgrade && apt-get -y install \
         doxygen \
         graphviz \
         python3-pip \
-        clang-format-6.0 && \
+        clang-format-6.0 \
+        iproute2 && \
     apt-get -y autoremove && \
     apt-get autoclean
 
@@ -68,6 +67,6 @@ RUN installer=$(mktemp) \
 
 ARG GEODE_VERSION=1.13.2
 ENV GEODE_HOME /apache-geode-${GEODE_VERSION}
-RUN curl -L -s "https://www.apache.org/dyn/closer.cgi?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
+RUN curl -L -s "https://archive.apache.org/dist/geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
 
 CMD ["bash"]

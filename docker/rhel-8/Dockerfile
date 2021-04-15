@@ -24,10 +24,10 @@ RUN yum update -y && \
     yum -y clean all
 
 COPY bellsoft.repo /etc/yum.repos.d/
-COPY --from=centos:8 /etc/yum.repos.d/CentOS-PowerTools.repo /etc/yum.repos.d/
+COPY --from=centos:8 /etc/yum.repos.d/CentOS-Linux-PowerTools.repo /etc/yum.repos.d/
 COPY --from=centos:8 /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/
 
-RUN yum config-manager --set-enabled PowerTools && \
+RUN yum config-manager --set-enabled powertools && \
     yum update -y && \
     yum install -y --setopt=tsflags=nodocs \
         git \
@@ -38,7 +38,8 @@ RUN yum config-manager --set-enabled PowerTools && \
         bellsoft-java11 \
         doxygen \
         python3-pip \
-        gcc-c++ && \
+        gcc-c++ \
+        iproute && \
     yum -y clean all
 
 RUN pip3 install --upgrade pip && \
@@ -56,6 +57,6 @@ RUN installer=$(mktemp) \
 
 ARG GEODE_VERSION=1.13.2
 ENV GEODE_HOME /apache-geode-${GEODE_VERSION}
-RUN curl -L -s "https://www.apache.org/dyn/closer.cgi?action=download&filename=geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
+RUN curl -L -s "https://archive.apache.org/dist/geode/${GEODE_VERSION}/apache-geode-${GEODE_VERSION}.tgz" | tar -zxvf - --exclude javadoc
 
 CMD ["bash"]
