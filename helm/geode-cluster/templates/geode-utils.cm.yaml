@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: geode-utils
+data:
+  get-locators.sh: |
+    function get_locators() {
+      local name="{{ include "geode-cluster.locator.name" . }}"
+      echo -n "$name-0.$name[{{ .Values.cluster.locator.memberPort }}]"
+      for i in {1..31}; do
+        local host="$name-$i.$name[{{ .Values.cluster.locator.memberPort }}]"
+        if ! ping $host -c 1 > /dev/null 2>&1; then 
+          break
+        fi
+        echo -n ",$host"
+      done
+    }

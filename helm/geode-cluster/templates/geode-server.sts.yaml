@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "geode-cluster.server.name" . }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "geode-cluster.server.name" . }}
+  serviceName: {{ include "geode-cluster.server.name" . }}
+  replicas: {{ .Values.cluster.server.replicas }} 
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: {{ include "geode-cluster.server.name" . }}
+    spec:
+      initContainers:
+      - name: geode-cluster-init
+        image: {{ include "geode-cluster.cluster.imagePath" . }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          until gfsh -e "connect --locator={{ include "geode-cluster.locator.name" . }}[{{ .Values.cluster.locator.memberPort }}]"; do
+            echo "Waiting for a locator to be online."
+            sleep 2
+          done
+
+      containers:
+      - name: geode
+        image: {{ include "geode-cluster.cluster.imagePath" . }} 
+        workingDir: /datastore
+        command:
+        - /bin/bash
+        - -c
+        - |
+          source /geode/utils/get-locators.sh
+
+          /usr/lib/jvm/jdk-8u282-bellsoft-x86_64/jre/bin/java \
+          -server -classpath /geode/lib/geode-core-1.13.2.jar:/geode/lib/geode-dependencies.jar \
+          -Dgemfire.enable-cluster-configuration=true \
+          -Dgemfire.load-cluster-configuration-from-dir=false \
+          -Dgemfire.launcher.registerSignalHandlers=true \
+          -Djava.awt.headless=true \
+          -Dgemfire.locators=$(get_locators) \
+          org.apache.geode.distributed.ServerLauncher start $(hostname) \
+          --server-port={{ .Values.cluster.server.memberPort }}
+        ports:
+        - containerPort: {{ .Values.cluster.server.memberPort }}
+        volumeMounts:
+        - name: data
+          mountPath: /datastore
+        - name: geode-utils
+          mountPath: /geode/utils
+      volumes:
+      - name: geode-utils
+        configMap:
+          name: geode-utils
+{{- if not .Values.cluster.server.persistence.enabled }}
+      - name: data
+        emptyDir: {}
+{{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: "app"
+                operator: In
+                values:
+                - {{ include "geode-cluster.server.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+{{- if .Values.cluster.server.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.cluster.server.persistence.size }}
+{{- end }}

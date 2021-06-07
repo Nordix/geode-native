@@ -1,0 +1,7 @@
+apiVersion: v2
+name: geode-cluster
+description: Apache Geode Cluster helmchart
+type: application
+version: 0.1.0
+appVersion: "1.13.2"
+icon: https://geode.apache.org/favicon.ico

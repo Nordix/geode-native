@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "geode-cluster.locator.name" . }}
+  labels:
+    app: {{ include "geode-cluster.locator.name" . }}
+spec:
+  ports:
+  - port: {{ .Values.cluster.locator.memberPort }}
+  clusterIP: None
+  selector:
+    app: {{ include "geode-cluster.locator.name" . }}

@@ -1,0 +1,94 @@
+# Apache Geode Helm chart
+
+This helmchart setups a Geode cluster
+
+## How to prepare the local environment
+This are the pre-requisites to install all necessary tooling to install this Helm chart.
+
+### **1. Setup kind tool**
+
+```bash
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.0/kind-linux-amd64
+sudo install -o root -g root -m 0755 kind /usr/local/bin/kind
+```
+
+### **2. Setup a Kubernetes cluster with kind**
+
+```bash
+kind create cluster --name <cluster-name> --config <cluster-config-file>
+```
+
+You can find more information about cluster configuration here: https://kind.sigs.k8s.io/docs/user/configuration/
+
+A basic example of a cluster with one master and 4 nodes is as follows:
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+- role: worker
+- role: worker
+```
+
+### **3. Install kubectl**
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+```
+
+### **4. Install helm**
+
+```bash
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+```
+
+### **4. Install helm**
+
+```bash
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+```
+
+### **4. (optional) Install Istio**
+
+```bash
+curl -sL https://istio.io/downloadIstioctl | sh -
+istioctl install
+```
+
+## How to instantiate a Geode cluster with this Helm chart
+
+In order to instantiate a cluster you need to follow the steps described below.
+
+### **1. (optional) Enable Istio auto injection**
+
+In order to have Istio sidecar deployed on both servers and locators you need to enable istio auto-injection.
+For that, you need to execute tag the namespace as follows:
+
+```bash
+kubectl label namespace <namespace> istio-injection=enabled
+```
+
+I.E:
+
+```bash
+kubectl label namespace default istio-injection=enabled
+```
+
+### **2. Install helmchart**
+
+```bash
+helm install <installation-name> <helm-chart-path>
+```
+
+I.E:
+
+```bash
+helm install geode-est ${REPOSITORY_ROOT}/helm/geode-cluster 
+```

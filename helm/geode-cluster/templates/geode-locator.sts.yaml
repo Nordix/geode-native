@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "geode-cluster.locator.name" . }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ include "geode-cluster.locator.name" . }}
+  serviceName: {{ include "geode-cluster.locator.name" . }}
+  replicas: {{ .Values.cluster.locator.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "geode-cluster.locator.name" . }}
+    spec:
+      containers:
+      - name: geode
+        image: {{ include "geode-cluster.cluster.imagePath" . }}
+        workingDir: /datastore
+        command:
+        - /bin/bash
+        - -c
+        - |
+          source /geode/utils/get-locators.sh
+
+          /usr/lib/jvm/jdk-8u282-bellsoft-x86_64/jre/bin/java \
+          -server -classpath /geode/lib/geode-core-1.13.2.jar:/geode/lib/geode-dependencies.jar \
+          -Dgemfire.enable-cluster-configuration=true \
+          -Dgemfire.load-cluster-configuration-from-dir=false \
+          -Dgemfire.launcher.registerSignalHandlers=true \
+          -Djava.awt.headless=true \
+          -Dgemfire.locators=$(get_locators) \
+          org.apache.geode.distributed.LocatorLauncher start $(hostname) \
+          --port={{ .Values.cluster.locator.memberPort }}
+        ports:
+        - containerPort: {{ .Values.cluster.locator.memberPort }}
+        volumeMounts:
+        - name: geode-utils
+          mountPath: /geode/utils
+        - name: data
+          mountPath: /datastore
+      volumes:
+      - name: geode-utils
+        configMap:
+          name: geode-utils
+{{- if not .Values.cluster.server.persistence.enabled }}
+      - name: data
+        emptyDir: {}
+{{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: "app"
+                operator: In
+                values:
+                - {{ include "geode-cluster.locator.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+{{- if .Values.cluster.locator.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.cluster.locator.persistence.size }} 
+{{- end }}
